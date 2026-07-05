@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/is-configured";
 import type { Station, Tour } from "@/lib/tours";
-import { TourMap } from "@/components/tour-map";
+import { TourPlayer } from "@/components/tour-player";
 import { Badge } from "@/components/ui/badge";
 
 async function getTour(
@@ -59,34 +59,8 @@ export default async function TourDetailPage({
       )}
 
       <div className="mt-8">
-        <TourMap
-          stations={stations.map((s) => ({
-            id: s.id,
-            title: s.title,
-            latitude: s.latitude,
-            longitude: s.longitude,
-          }))}
-        />
+        <TourPlayer stations={stations} />
       </div>
-
-      <ol className="mt-8 flex flex-col gap-6">
-        {stations.map((station, index) => (
-          <li key={station.id} className="rounded-lg border p-4">
-            <p className="text-sm text-muted-foreground">
-              Station {index + 1}
-            </p>
-            <h2 className="text-lg font-medium">{station.title}</h2>
-            {station.description && (
-              <p className="mt-1 text-sm text-muted-foreground">
-                {station.description}
-              </p>
-            )}
-            {station.audio_url && (
-              <audio className="mt-3 w-full" controls src={station.audio_url} />
-            )}
-          </li>
-        ))}
-      </ol>
     </div>
   );
 }
