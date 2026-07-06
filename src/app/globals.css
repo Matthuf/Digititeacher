@@ -1,27 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Sunset Trail: warm parchment base, deep pine-petrol structure, muted rust-gold accent */
+  --background: #fbf6ec;
+  --foreground: #1f2e2c;
 
-  --card: #ffffff;
-  --card-foreground: #171717;
-  --popover: #ffffff;
-  --popover-foreground: #171717;
-  --primary: #171717;
-  --primary-foreground: #fafafa;
-  --secondary: #f5f5f5;
-  --secondary-foreground: #171717;
-  --muted: #f5f5f5;
-  --muted-foreground: #737373;
-  --accent: #f5f5f5;
-  --accent-foreground: #171717;
-  --destructive: #dc2626;
-  --destructive-foreground: #fafafa;
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #a1a1aa;
-  --radius: 0.625rem;
+  --card: #fffdf8;
+  --card-foreground: #1f2e2c;
+  --popover: #fffdf8;
+  --popover-foreground: #1f2e2c;
+  --primary: #c17a3d;
+  --primary-foreground: #fbf6ec;
+  --secondary: #1f2e2c;
+  --secondary-foreground: #fbf6ec;
+  --muted: #f0e4d0;
+  --muted-foreground: #6b5f53;
+  --accent: #f0e4d0;
+  --accent-foreground: #1f2e2c;
+  --destructive: #b3402c;
+  --destructive-foreground: #fbf6ec;
+  --border: #e4d7c0;
+  --input: #e4d7c0;
+  --ring: #c17a3d;
+  --radius: 0.75rem;
 }
 
 @theme inline {
@@ -50,37 +51,38 @@
   --radius-xl: calc(var(--radius) + 0.25rem);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-fraunces);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #14201f;
+    --foreground: #f3ecdd;
 
-    --card: #171717;
-    --card-foreground: #ededed;
-    --popover: #171717;
-    --popover-foreground: #ededed;
-    --primary: #ededed;
-    --primary-foreground: #171717;
-    --secondary: #262626;
-    --secondary-foreground: #ededed;
-    --muted: #262626;
-    --muted-foreground: #a1a1aa;
-    --accent: #262626;
-    --accent-foreground: #ededed;
-    --destructive: #7f1d1d;
-    --destructive-foreground: #ededed;
-    --border: #262626;
-    --input: #262626;
-    --ring: #52525b;
+    --card: #1a2725;
+    --card-foreground: #f3ecdd;
+    --popover: #1a2725;
+    --popover-foreground: #f3ecdd;
+    --primary: #d68a4c;
+    --primary-foreground: #14201f;
+    --secondary: #f3ecdd;
+    --secondary-foreground: #14201f;
+    --muted: #24332f;
+    --muted-foreground: #b6a894;
+    --accent: #24332f;
+    --accent-foreground: #f3ecdd;
+    --destructive: #e06850;
+    --destructive-foreground: #f3ecdd;
+    --border: #2b3b37;
+    --input: #2b3b37;
+    --ring: #d68a4c;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
 * {
