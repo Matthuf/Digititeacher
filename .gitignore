@@ -45,3 +45,6 @@ next-env.d.ts
 # (not open-source) upstream repo, must not be redistributed
 .agents/skills/tailwind-4-docs/references/docs/
 .agents/skills/tailwind-4-docs/references/docs-index.tsx
+
+# python bytecode from skill scripts
+__pycache__/
