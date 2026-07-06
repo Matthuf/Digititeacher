@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  /* Sunset Trail: warm parchment base, deep pine-petrol structure, muted rust-gold accent */
+  /* Sunset Trail: warm parchment base, deep pine-petrol structure, muted rust-gold accent.
+     Primary is darkened enough to keep 4.5:1 contrast with parchment text on buttons. */
   --background: #fbf6ec;
   --foreground: #1f2e2c;
 
@@ -9,7 +10,7 @@
   --card-foreground: #1f2e2c;
   --popover: #fffdf8;
   --popover-foreground: #1f2e2c;
-  --primary: #c17a3d;
+  --primary: #a9622a;
   --primary-foreground: #fbf6ec;
   --secondary: #1f2e2c;
   --secondary-foreground: #fbf6ec;
@@ -21,7 +22,7 @@
   --destructive-foreground: #fbf6ec;
   --border: #e4d7c0;
   --input: #e4d7c0;
-  --ring: #c17a3d;
+  --ring: #a9622a;
   --radius: 0.75rem;
 }
 
@@ -72,7 +73,7 @@
     --accent: #24332f;
     --accent-foreground: #f3ecdd;
     --destructive: #e06850;
-    --destructive-foreground: #f3ecdd;
+    --destructive-foreground: #14201f;
     --border: #2b3b37;
     --input: #2b3b37;
     --ring: #d68a4c;
@@ -87,4 +88,98 @@ body {
 
 * {
   border-color: var(--border);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Numbered Leaflet station pins (rendered via L.divIcon) */
+.dt-pin-wrap {
+  background: none;
+  border: none;
+}
+
+.dt-pin {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  border: 2px solid var(--card);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.3);
+}
+
+.dt-pin::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  margin-top: -2px;
+  border: 6px solid transparent;
+  border-top-color: var(--primary);
+}
+
+.dt-pin-active {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  transform: scale(1.15);
+}
+
+.dt-pin-active::after {
+  border-top-color: var(--secondary);
+}
+
+/* Tiny equalizer shown next to the currently playing station */
+.dt-eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+
+.dt-eq span {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--primary);
+  transform-origin: bottom;
+  animation: dt-eq 1.1s ease-in-out infinite;
+}
+
+.dt-eq span:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.dt-eq span:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
+@keyframes dt-eq {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dt-eq span {
+    animation: none;
+    transform: scaleY(0.6);
+  }
 }

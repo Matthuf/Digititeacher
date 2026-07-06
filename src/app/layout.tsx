@@ -21,7 +21,8 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   title: "Digititeacher Audioguides",
-  description: "Selbst erstellte Audiotouren zum Online-Erlebnis oder Download.",
+  description:
+    "GPS-geführte Audiotouren zum Wandern – handgemacht, direkt im Browser, ohne App.",
 };
 
 export default function RootLayout({

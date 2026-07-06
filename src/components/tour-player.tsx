@@ -1,15 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { MapPin, Navigation, Pause, Play } from "lucide-react";
 import { TourMap } from "@/components/tour-map";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { distanceMeters } from "@/lib/geo";
 import type { Station } from "@/lib/tours";
-import { MapPin, Pause, Play } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const TRIGGER_RADIUS_METERS = 40;
+
+function formatDistance(meters: number) {
+  if (meters >= 1000) {
+    return `${(meters / 1000).toFixed(1).replace(".", ",")} km`;
+  }
+  return `${Math.round(meters)} m`;
+}
 
 export function TourPlayer({ stations }: { stations: Station[] }) {
   const [position, setPosition] = useState<GeolocationCoordinates | null>(
@@ -87,104 +93,174 @@ export function TourPlayer({ stations }: { stations: Station[] }) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between rounded-lg border p-4">
-        <div>
-          <p className="font-medium">GPS-Autoplay</p>
-          <p className="text-sm text-muted-foreground">
-            Startet Audio automatisch, wenn du eine Station erreichst.
-          </p>
-          {geoError && <p className="mt-1 text-sm text-destructive">{geoError}</p>}
+    <div className="flex flex-col gap-8">
+      {/* GPS-Autoplay */}
+      <div>
+        <div className="flex flex-col gap-4 rounded-2xl bg-secondary p-5 text-secondary-foreground sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Navigation aria-hidden="true" className="size-5" />
+            </span>
+            <div>
+              <p className="flex items-center gap-2 font-medium">
+                GPS-Autoplay
+                {autoPlay && (
+                  <span
+                    aria-hidden="true"
+                    className="size-2 animate-pulse rounded-full bg-primary"
+                  />
+                )}
+              </p>
+              <p className="mt-0.5 text-sm opacity-80">
+                Startet das Audio automatisch, sobald du eine Station
+                erreichst.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            onClick={() => (autoPlay ? setAutoPlay(false) : enableAutoPlay())}
+            className={cn(
+              "shrink-0 rounded-full",
+              autoPlay &&
+                "border border-primary/50 bg-primary/15 text-secondary-foreground hover:bg-primary/25",
+            )}
+          >
+            {autoPlay ? "Aktiv – ausschalten" : "Aktivieren"}
+          </Button>
         </div>
-        <Button
-          type="button"
-          variant={autoPlay ? "default" : "outline"}
-          onClick={() => (autoPlay ? setAutoPlay(false) : enableAutoPlay())}
-        >
-          {autoPlay ? "Aktiv" : "Aktivieren"}
-        </Button>
+        {geoError && (
+          <p className="mt-2 text-sm text-destructive" role="alert">
+            {geoError}
+          </p>
+        )}
       </div>
 
-      <TourMap
-        stations={stations.map((s) => ({
-          id: s.id,
-          title: s.title,
-          latitude: s.latitude,
-          longitude: s.longitude,
-        }))}
-        activeStationId={playingId}
-        userPosition={
-          position
-            ? { latitude: position.latitude, longitude: position.longitude }
-            : null
-        }
-      />
+      {/* Karte */}
+      <div className="relative z-0 overflow-hidden rounded-2xl border">
+        <TourMap
+          stations={stations.map((s) => ({
+            id: s.id,
+            title: s.title,
+            latitude: s.latitude,
+            longitude: s.longitude,
+          }))}
+          activeStationId={playingId}
+          userPosition={
+            position
+              ? { latitude: position.latitude, longitude: position.longitude }
+              : null
+          }
+          className="h-72 w-full sm:h-96"
+        />
+      </div>
 
+      {/* Stationen */}
       <ol className="flex flex-col gap-4">
         {stations.map((station, index) => {
           const distance = position
-            ? Math.round(
-                distanceMeters(
-                  { latitude: position.latitude, longitude: position.longitude },
-                  station,
-                ),
+            ? distanceMeters(
+                {
+                  latitude: position.latitude,
+                  longitude: position.longitude,
+                },
+                station,
               )
             : null;
           const isPlaying = playingId === station.id;
 
           return (
             <li key={station.id}>
-              <Card className={isPlaying ? "border-primary" : undefined}>
-                <CardContent className="flex flex-col gap-3 py-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        Station {index + 1}
-                      </p>
-                      <h2 className="text-lg font-medium">{station.title}</h2>
-                      {station.description && (
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {station.description}
-                        </p>
+              <div
+                className={cn(
+                  "rounded-2xl border bg-card p-5 transition-all duration-300",
+                  isPlaying &&
+                    "border-primary/60 bg-primary/[0.04] ring-1 ring-primary/40",
+                )}
+              >
+                <div className="flex items-start gap-4">
+                  <span
+                    className={cn(
+                      "flex size-9 shrink-0 items-center justify-center rounded-full font-serif text-sm font-semibold transition-colors",
+                      isPlaying
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-primary/12 text-primary",
+                    )}
+                  >
+                    {index + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <h2 className="flex items-center gap-2.5 font-serif text-lg font-semibold tracking-tight">
+                        {station.title}
+                        {isPlaying && (
+                          <span aria-hidden="true" className="dt-eq">
+                            <span />
+                            <span />
+                            <span />
+                          </span>
+                        )}
+                      </h2>
+                      {distance !== null && (
+                        <span className="flex shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground">
+                          <MapPin
+                            aria-hidden="true"
+                            className="size-3.5 text-primary"
+                          />
+                          {formatDistance(distance)}
+                        </span>
                       )}
                     </div>
-                    {distance !== null && (
-                      <Badge variant="outline" className="flex shrink-0 items-center gap-1">
-                        <MapPin className="size-3" />
-                        {distance} m
-                      </Badge>
+                    {station.description && (
+                      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                        {station.description}
+                      </p>
+                    )}
+
+                    {station.audio_url ? (
+                      <div className="mt-4 flex items-center gap-3">
+                        <Button
+                          type="button"
+                          size="icon"
+                          onClick={() => toggleStation(station.id)}
+                          aria-label={
+                            isPlaying
+                              ? `${station.title} pausieren`
+                              : `${station.title} abspielen`
+                          }
+                          className="size-11 shrink-0 rounded-full"
+                        >
+                          {isPlaying ? (
+                            <Pause aria-hidden="true" />
+                          ) : (
+                            <Play aria-hidden="true" className="ml-0.5" />
+                          )}
+                        </Button>
+                        <audio
+                          ref={(el) => {
+                            if (el) audioRefs.current.set(station.id, el);
+                            else audioRefs.current.delete(station.id);
+                          }}
+                          className="h-10 w-full min-w-0"
+                          controls
+                          preload="none"
+                          src={station.audio_url}
+                          onPlay={() => setPlayingId(station.id)}
+                          onPause={() =>
+                            setPlayingId((current) =>
+                              current === station.id ? null : current,
+                            )
+                          }
+                        />
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-sm italic text-muted-foreground/70">
+                        Kein Audio hinterlegt.
+                      </p>
                     )}
                   </div>
-
-                  {station.audio_url && (
-                    <div className="flex items-center gap-3">
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="outline"
-                        onClick={() => toggleStation(station.id)}
-                      >
-                        {isPlaying ? <Pause /> : <Play />}
-                      </Button>
-                      <audio
-                        ref={(el) => {
-                          if (el) audioRefs.current.set(station.id, el);
-                          else audioRefs.current.delete(station.id);
-                        }}
-                        className="w-full"
-                        controls
-                        src={station.audio_url}
-                        onPlay={() => setPlayingId(station.id)}
-                        onPause={() =>
-                          setPlayingId((current) =>
-                            current === station.id ? null : current,
-                          )
-                        }
-                      />
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </li>
           );
         })}
