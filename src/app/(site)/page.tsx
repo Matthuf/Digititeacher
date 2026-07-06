@@ -3,9 +3,10 @@ import { Compass, Navigation, PenLine, Smartphone } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/is-configured";
 import type { Tour } from "@/lib/tours";
+import { GENRE_KEYS, GENRES, isGenre } from "@/lib/genres";
 import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/reveal";
-import { Ridgeline } from "@/components/ridgeline";
+import { TwilightRidges } from "@/components/twilight-ridges";
 import { TourCard } from "@/components/tour-card";
 
 async function getPublishedTours(): Promise<Tour[]> {
@@ -38,6 +39,17 @@ const features = [
   },
 ];
 
+function groupByGenre(tours: Tour[]) {
+  const withGenre = GENRE_KEYS.map((key) => ({
+    key,
+    label: GENRES[key].label,
+    tours: tours.filter((t) => t.genre === key),
+  })).filter((group) => group.tours.length > 0);
+
+  const rest = tours.filter((t) => !isGenre(t.genre));
+  return { withGenre, rest };
+}
+
 export default async function HomePage() {
   let tours: Tour[] = [];
   let loadError = false;
@@ -50,24 +62,20 @@ export default async function HomePage() {
     }
   }
 
+  const { withGenre, rest } = groupByGenre(tours);
+  const useSections = withGenre.length > 0;
+
   return (
     <>
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-        >
-          <div className="absolute right-[6%] top-8 size-44 rounded-full bg-primary/25 blur-3xl sm:size-64" />
-          <div className="absolute right-[11%] top-16 size-20 rounded-full bg-primary/60 blur-lg sm:size-28" />
-          <Ridgeline className="absolute bottom-0 left-0 h-28 w-full text-foreground sm:h-40" />
-        </div>
+        <TwilightRidges className="absolute inset-0" />
 
-        <div className="relative mx-auto max-w-6xl px-6 pb-36 pt-20 sm:pb-48 sm:pt-28">
+        <div className="relative mx-auto max-w-6xl px-6 pb-52 pt-20 sm:pb-72 sm:pt-28">
           <Reveal>
             <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-primary">
               <Compass aria-hidden="true" className="size-4" />
-              GPS-Audioguides zum Wandern
+              GPS-Audiotouren zum Erleben
             </p>
           </Reveal>
           <Reveal delay={0.08}>
@@ -78,8 +86,9 @@ export default async function HomePage() {
           </Reveal>
           <Reveal delay={0.16}>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
-              GPS-geführte Audiotouren, die genau dort weitererzählen, wo du
-              gerade stehst – mitten in der Landschaft, direkt im Browser.
+              Geschichten für Kinder, Wissen über Natur und Kultur, Rundgänge
+              zu zweit – erzählt genau dort, wo du gerade stehst. Direkt im
+              Browser.
             </p>
           </Reveal>
           <Reveal delay={0.24}>
@@ -117,18 +126,15 @@ export default async function HomePage() {
       <section id="touren" className="scroll-mt-24">
         <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
           <Reveal>
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <h2 className="font-serif text-3xl font-semibold tracking-tight">
-                  Alle Touren
-                </h2>
-                {tours.length > 0 && (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {tours.length} {tours.length === 1 ? "Tour" : "Touren"}{" "}
-                    online
-                  </p>
-                )}
-              </div>
+            <div>
+              <h2 className="font-serif text-3xl font-semibold tracking-tight">
+                Alle Touren
+              </h2>
+              {tours.length > 0 && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {tours.length} {tours.length === 1 ? "Tour" : "Touren"} online
+                </p>
+              )}
             </div>
           </Reveal>
 
@@ -176,13 +182,68 @@ export default async function HomePage() {
             </Reveal>
           )}
 
-          <div className="mt-10 grid gap-6 sm:grid-cols-2">
-            {tours.map((tour, i) => (
-              <Reveal key={tour.id} delay={Math.min(i * 0.07, 0.35)} className="h-full">
-                <TourCard tour={tour} />
-              </Reveal>
-            ))}
-          </div>
+          {useSections ? (
+            <div className="mt-10 flex flex-col gap-14">
+              {withGenre.map((group) => (
+                <div key={group.key}>
+                  <Reveal>
+                    <div className="flex items-center gap-3">
+                      <span
+                        aria-hidden="true"
+                        className={`h-6 w-1 rounded-full ${GENRES[group.key].lineClass}`}
+                      />
+                      <h3 className="font-serif text-xl font-semibold tracking-tight">
+                        {group.label}
+                      </h3>
+                    </div>
+                  </Reveal>
+                  <div className="mt-5 grid gap-6 sm:grid-cols-2">
+                    {group.tours.map((tour, i) => (
+                      <Reveal
+                        key={tour.id}
+                        delay={Math.min(i * 0.07, 0.35)}
+                        className="h-full"
+                      >
+                        <TourCard tour={tour} />
+                      </Reveal>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {rest.length > 0 && (
+                <div>
+                  <Reveal>
+                    <h3 className="font-serif text-xl font-semibold tracking-tight">
+                      Weitere Touren
+                    </h3>
+                  </Reveal>
+                  <div className="mt-5 grid gap-6 sm:grid-cols-2">
+                    {rest.map((tour, i) => (
+                      <Reveal
+                        key={tour.id}
+                        delay={Math.min(i * 0.07, 0.35)}
+                        className="h-full"
+                      >
+                        <TourCard tour={tour} />
+                      </Reveal>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mt-10 grid gap-6 sm:grid-cols-2">
+              {tours.map((tour, i) => (
+                <Reveal
+                  key={tour.id}
+                  delay={Math.min(i * 0.07, 0.35)}
+                  className="h-full"
+                >
+                  <TourCard tour={tour} />
+                </Reveal>
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </>

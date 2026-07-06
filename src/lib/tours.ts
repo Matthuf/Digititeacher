@@ -9,6 +9,7 @@ export type Tour = {
   region: string | null;
   duration_minutes: number | null;
   difficulty: string | null;
+  genre?: string | null;
   status: TourStatus;
   price: number | null;
   created_at: string;

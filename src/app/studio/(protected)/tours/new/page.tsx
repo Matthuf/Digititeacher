@@ -1,4 +1,5 @@
 import { createTour } from "@/app/studio/actions";
+import { GENRE_KEYS, GENRES } from "@/lib/genres";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +41,22 @@ export default async function NewTourPage({
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="difficulty">Schwierigkeit</Label>
               <Input id="difficulty" name="difficulty" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="genre">Erlebnis-Genre</Label>
+              <select
+                id="genre"
+                name="genre"
+                defaultValue=""
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="">– Kein Genre –</option>
+                {GENRE_KEYS.map((key) => (
+                  <option key={key} value={key}>
+                    {GENRES[key].label}
+                  </option>
+                ))}
+              </select>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" className="mt-2">

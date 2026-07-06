@@ -4,6 +4,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/tours";
+import { isGenre } from "@/lib/genres";
+
+function genreFromForm(formData: FormData) {
+  const value = String(formData.get("genre") ?? "");
+  return isGenre(value) ? value : null;
+}
 
 export async function signIn(formData: FormData) {
   const email = String(formData.get("email") ?? "");
@@ -45,6 +51,7 @@ export async function createTour(formData: FormData) {
         ? Number(formData.get("duration_minutes"))
         : null,
       difficulty: String(formData.get("difficulty") ?? "") || null,
+      genre: genreFromForm(formData),
       description: String(formData.get("description") ?? "") || null,
       status: "draft",
     })
@@ -70,6 +77,7 @@ export async function updateTour(tourId: string, formData: FormData) {
         ? Number(formData.get("duration_minutes"))
         : null,
       difficulty: String(formData.get("difficulty") ?? "") || null,
+      genre: genreFromForm(formData),
       description: String(formData.get("description") ?? "") || null,
       status: formData.get("status") === "published" ? "published" : "draft",
       updated_at: new Date().toISOString(),

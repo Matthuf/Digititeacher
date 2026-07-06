@@ -5,6 +5,7 @@ import { ArrowLeft, Clock, MapPin, Mountain } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/is-configured";
 import type { Station, Tour } from "@/lib/tours";
+import { GENRES, isGenre } from "@/lib/genres";
 import { TourPlayer } from "@/components/tour-player";
 import { Reveal } from "@/components/reveal";
 
@@ -72,6 +73,7 @@ export default async function TourDetailPage({
 
   if (!result) notFound();
   const { tour, stations } = result;
+  const genre = isGenre(tour.genre) ? GENRES[tour.genre] : null;
 
   return (
     <article className="mx-auto max-w-3xl px-6 py-12 sm:py-16">
@@ -90,6 +92,17 @@ export default async function TourDetailPage({
           <h1 className="font-serif text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
             {tour.title}
           </h1>
+          {genre && (
+            <div className="mt-4 flex items-center gap-3">
+              <span
+                aria-hidden="true"
+                className={`h-1 w-12 rounded-full ${genre.lineClass}`}
+              />
+              <span className="text-sm font-medium text-muted-foreground">
+                {genre.label}
+              </span>
+            </div>
+          )}
         </Reveal>
         <Reveal delay={0.12}>
           <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">

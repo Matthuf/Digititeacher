@@ -24,6 +24,11 @@
   --input: #e4d7c0;
   --ring: #a9622a;
   --radius: 0.75rem;
+
+  /* Twilight Ridge accents (design-system/MASTER.md §2) */
+  --mist: #2e8c77;
+  --dusk: #a83a63;
+  --twilight: #5b4a78;
 }
 
 @theme inline {
@@ -50,6 +55,9 @@
   --radius-md: calc(var(--radius) - 0.125rem);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 0.25rem);
+  --color-mist: var(--mist);
+  --color-dusk: var(--dusk);
+  --color-twilight: var(--twilight);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-serif: var(--font-fraunces);
@@ -57,12 +65,12 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #14201f;
+    --background: #101d22;
     --foreground: #f3ecdd;
 
-    --card: #1a2725;
+    --card: #16242b;
     --card-foreground: #f3ecdd;
-    --popover: #1a2725;
+    --popover: #16242b;
     --popover-foreground: #f3ecdd;
     --primary: #d68a4c;
     --primary-foreground: #14201f;
@@ -74,9 +82,13 @@
     --accent-foreground: #f3ecdd;
     --destructive: #e06850;
     --destructive-foreground: #14201f;
-    --border: #2b3b37;
-    --input: #2b3b37;
+    --border: #24363c;
+    --input: #24363c;
     --ring: #d68a4c;
+
+    --mist: #4fd6b8;
+    --dusk: #e06b8a;
+    --twilight: #8f7bb8;
   }
 }
 
@@ -154,7 +166,7 @@ body {
   width: 3px;
   height: 100%;
   border-radius: 2px;
-  background: var(--primary);
+  background: var(--mist);
   transform-origin: bottom;
   animation: dt-eq 1.1s ease-in-out infinite;
 }
@@ -181,5 +193,42 @@ body {
   .dt-eq span {
     animation: none;
     transform: scaleY(0.6);
+  }
+}
+
+/* Twilight Ridge fog banks: slow ambient drift between ridge layers */
+.tr-fog {
+  position: absolute;
+  left: -4%;
+  width: 108%;
+  background: linear-gradient(
+    to top,
+    transparent,
+    var(--mist) 40%,
+    transparent
+  );
+  opacity: 0.14;
+  animation: tr-fog-drift 12s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@media (prefers-color-scheme: dark) {
+  .tr-fog {
+    opacity: 0.22;
+  }
+}
+
+@keyframes tr-fog-drift {
+  from {
+    transform: translateX(-1.5%);
+  }
+  to {
+    transform: translateX(1.5%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tr-fog {
+    animation: none;
   }
 }

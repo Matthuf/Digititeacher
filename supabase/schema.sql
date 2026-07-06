@@ -11,6 +11,7 @@ create table if not exists tours (
   region text,
   duration_minutes integer,
   difficulty text,
+  genre text check (genre in ('wissen', 'kinder', 'romantik', 'sagen', 'schule')),
   status text not null default 'draft' check (status in ('draft', 'published')),
   price numeric,
   created_at timestamptz not null default now(),

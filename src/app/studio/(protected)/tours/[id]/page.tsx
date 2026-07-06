@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Station, Tour } from "@/lib/tours";
 import { addStation, deleteStation, updateTour } from "@/app/studio/actions";
+import { GENRE_KEYS, GENRES } from "@/lib/genres";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -95,6 +96,22 @@ export default async function EditTourPage({
                 name="difficulty"
                 defaultValue={tour.difficulty ?? ""}
               />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="genre">Erlebnis-Genre</Label>
+              <select
+                id="genre"
+                name="genre"
+                defaultValue={tour.genre ?? ""}
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="">– Kein Genre –</option>
+                {GENRE_KEYS.map((key) => (
+                  <option key={key} value={key}>
+                    {GENRES[key].label}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="status">Status</Label>
