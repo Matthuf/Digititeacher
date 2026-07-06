@@ -1,6 +1,6 @@
-Status: Not initialized
 Source: https://github.com/tailwindlabs/tailwindcss.com
+Commit: fd6d82d79ca684fdaf4c9ce06a7ab5acc71ed845
+Commit-Date: 2026-07-06 13:02:59 +0200
 Docs-Path: src/docs
 Index-Path: src/app/(docs)/docs/index.tsx
-Snapshot-Date: (none)
-Note: Run skills/tailwind-4-docs/scripts/sync_tailwind_docs.py --accept-docs-license to initialize.
+Snapshot-Date: 2026-07-06
