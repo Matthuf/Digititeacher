@@ -28,6 +28,9 @@ create table if not exists stations (
   longitude double precision not null,
   audio_url text,
   audio_duration_seconds integer,
+  transcript text,
+  trigger_radius_m integer
+    check (trigger_radius_m is null or trigger_radius_m between 5 and 500),
   image_url text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

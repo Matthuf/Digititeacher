@@ -1,8 +1,14 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Station, Tour } from "@/lib/tours";
-import { addStation, deleteStation, updateTour } from "@/app/studio/actions";
+import {
+  addStation,
+  deleteStation,
+  updateStation,
+  updateTour,
+} from "@/app/studio/actions";
 import { GENRE_KEYS, GENRES } from "@/lib/genres";
+import { StationFields } from "./station-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -139,21 +145,48 @@ export default async function EditTourPage({
       <div className="mt-4 flex flex-col gap-3">
         {stations.map((station, index) => (
           <Card key={station.id}>
-            <CardContent className="flex items-start justify-between gap-4 py-4">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Station {index + 1}
-                </p>
-                <p className="font-medium">{station.title}</p>
-                <p className="text-sm text-muted-foreground">
-                  {station.latitude}, {station.longitude}
-                </p>
+            <CardContent className="py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    Station {index + 1}
+                  </p>
+                  <p className="font-medium">{station.title}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {station.latitude}, {station.longitude}
+                    {station.trigger_radius_m
+                      ? ` · Radius ${station.trigger_radius_m} m`
+                      : ""}
+                  </p>
+                </div>
+                <form action={deleteStation.bind(null, tour.id, station.id)}>
+                  <Button type="submit" variant="ghost" size="sm">
+                    Entfernen
+                  </Button>
+                </form>
               </div>
-              <form action={deleteStation.bind(null, tour.id, station.id)}>
-                <Button type="submit" variant="ghost" size="sm">
-                  Entfernen
-                </Button>
-              </form>
+
+              <details className="group mt-3">
+                <summary className="cursor-pointer list-none text-sm font-medium text-primary hover:underline">
+                  <span className="group-open:hidden">Bearbeiten</span>
+                  <span className="hidden group-open:inline">
+                    Bearbeiten schliessen
+                  </span>
+                </summary>
+                <form
+                  action={updateStation.bind(null, tour.id, station.id)}
+                  className="mt-4 flex flex-col gap-4 border-t pt-4"
+                >
+                  <StationFields
+                    idPrefix={`station-${station.id}`}
+                    tourId={tour.id}
+                    station={station}
+                  />
+                  <Button type="submit" className="mt-2 self-start">
+                    Station speichern
+                  </Button>
+                </form>
+              </details>
             </CardContent>
           </Card>
         ))}
@@ -165,40 +198,7 @@ export default async function EditTourPage({
         </CardHeader>
         <CardContent>
           <form action={addStationWithId} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="station-title">Titel</Label>
-              <Input id="station-title" name="title" required />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="station-description">Beschreibung</Label>
-              <Input id="station-description" name="description" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="latitude">Breitengrad</Label>
-                <Input
-                  id="latitude"
-                  name="latitude"
-                  type="number"
-                  step="any"
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="longitude">Längengrad</Label>
-                <Input
-                  id="longitude"
-                  name="longitude"
-                  type="number"
-                  step="any"
-                  required
-                />
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="audio_url">Audio-URL</Label>
-              <Input id="audio_url" name="audio_url" placeholder="https://..." />
-            </div>
+            <StationFields idPrefix="new-station" tourId={tour.id} />
             <Button type="submit" className="mt-2">
               Station hinzufügen
             </Button>

@@ -26,6 +26,8 @@ export type Station = {
   longitude: number;
   audio_url: string | null;
   audio_duration_seconds: number | null;
+  transcript?: string | null;
+  trigger_radius_m?: number | null;
   image_url: string | null;
 };
 

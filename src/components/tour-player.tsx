@@ -1,14 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MapPin, Navigation, Pause, Play } from "lucide-react";
+import {
+  Check,
+  FileText,
+  MapPin,
+  Navigation,
+  Pause,
+  Play,
+  RotateCcw,
+  RotateCw,
+} from "lucide-react";
 import { TourMap } from "@/components/tour-map";
 import { Button } from "@/components/ui/button";
 import { distanceMeters } from "@/lib/geo";
 import type { Station } from "@/lib/tours";
 import { cn } from "@/lib/utils";
 
-const TRIGGER_RADIUS_METERS = 40;
+const DEFAULT_TRIGGER_RADIUS_METERS = 40;
 
 function formatDistance(meters: number) {
   if (meters >= 1000) {
@@ -17,15 +26,56 @@ function formatDistance(meters: number) {
   return `${Math.round(meters)} m`;
 }
 
-export function TourPlayer({ stations }: { stations: Station[] }) {
+export function TourPlayer({
+  tourId,
+  stations,
+}: {
+  tourId: string;
+  stations: Station[];
+}) {
   const [position, setPosition] = useState<GeolocationCoordinates | null>(
     null,
   );
   const [geoError, setGeoError] = useState<string | null>(null);
   const [autoPlay, setAutoPlay] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [heard, setHeard] = useState<Set<string>>(new Set());
   const audioRefs = useRef(new Map<string, HTMLAudioElement>());
   const triggeredRef = useRef(new Set<string>());
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+
+  const storageKey = `dt-heard-${tourId}`;
+
+  // Gehörte Stationen aus localStorage laden – nach der Hydration,
+  // damit Server- und Client-HTML übereinstimmen.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) setHeard(new Set(JSON.parse(raw) as string[]));
+      } catch {
+        // localStorage nicht verfügbar (z. B. Privatmodus) – Fortschritt aus.
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [storageKey]);
+
+  const markHeard = useCallback(
+    (id: string) => {
+      setHeard((current) => {
+        if (current.has(id)) return current;
+        const next = new Set(current);
+        next.add(id);
+        try {
+          localStorage.setItem(storageKey, JSON.stringify([...next]));
+        } catch {
+          // ignorieren
+        }
+        return next;
+      });
+    },
+    [storageKey],
+  );
 
   const playStation = useCallback((id: string) => {
     for (const [otherId, audio] of audioRefs.current) {
@@ -72,14 +122,50 @@ export function TourPlayer({ stations }: { stations: Station[] }) {
         { latitude: position.latitude, longitude: position.longitude },
         station,
       );
+      const radius = station.trigger_radius_m ?? DEFAULT_TRIGGER_RADIUS_METERS;
 
-      if (distance <= TRIGGER_RADIUS_METERS) {
+      if (distance <= radius) {
         triggeredRef.current.add(station.id);
         playStation(station.id);
         break;
       }
     }
   }, [position, autoPlay, stations, playStation]);
+
+  // Bildschirm während aktiver Tour wach halten (progressive enhancement).
+  useEffect(() => {
+    const active = autoPlay || playingId !== null;
+
+    async function acquire() {
+      try {
+        if (active && !wakeLockRef.current && "wakeLock" in navigator) {
+          wakeLockRef.current = await navigator.wakeLock.request("screen");
+          wakeLockRef.current.addEventListener("release", () => {
+            wakeLockRef.current = null;
+          });
+        }
+      } catch {
+        // Wake Lock nicht verfügbar/erlaubt – kein Problem.
+      }
+    }
+
+    function handleVisibility() {
+      if (document.visibilityState === "visible") acquire();
+    }
+
+    if (active) {
+      acquire();
+      document.addEventListener("visibilitychange", handleVisibility);
+      return () => {
+        document.removeEventListener("visibilitychange", handleVisibility);
+        wakeLockRef.current?.release().catch(() => {});
+        wakeLockRef.current = null;
+      };
+    }
+
+    wakeLockRef.current?.release().catch(() => {});
+    wakeLockRef.current = null;
+  }, [autoPlay, playingId]);
 
   function toggleStation(id: string) {
     const audio = audioRefs.current.get(id);
@@ -91,6 +177,17 @@ export function TourPlayer({ stations }: { stations: Station[] }) {
       playStation(id);
     }
   }
+
+  function skip(id: string, seconds: number) {
+    const audio = audioRefs.current.get(id);
+    if (!audio) return;
+    audio.currentTime = Math.max(
+      0,
+      Math.min(audio.currentTime + seconds, audio.duration || Infinity),
+    );
+  }
+
+  const heardCount = stations.filter((s) => heard.has(s.id)).length;
 
   return (
     <div className="flex flex-col gap-8">
@@ -155,6 +252,32 @@ export function TourPlayer({ stations }: { stations: Station[] }) {
         />
       </div>
 
+      {/* Fortschritt */}
+      {heardCount > 0 && (
+        <div>
+          <div className="flex items-center justify-between text-sm">
+            <p className="text-muted-foreground">
+              <span className="font-medium text-foreground">
+                {heardCount} von {stations.length}
+              </span>{" "}
+              Stationen gehört
+            </p>
+          </div>
+          <div
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={stations.length}
+            aria-valuenow={heardCount}
+            className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"
+          >
+            <div
+              className="h-full rounded-full bg-mist transition-all duration-500"
+              style={{ width: `${(heardCount / stations.length) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Stationen */}
       <ol className="flex flex-col gap-4">
         {stations.map((station, index) => {
@@ -168,6 +291,7 @@ export function TourPlayer({ stations }: { stations: Station[] }) {
               )
             : null;
           const isPlaying = playingId === station.id;
+          const isHeard = heard.has(station.id);
 
           return (
             <li key={station.id}>
@@ -184,10 +308,16 @@ export function TourPlayer({ stations }: { stations: Station[] }) {
                       "flex size-9 shrink-0 items-center justify-center rounded-full font-serif text-sm font-semibold transition-colors",
                       isPlaying
                         ? "bg-primary text-primary-foreground"
-                        : "bg-primary/12 text-primary",
+                        : isHeard
+                          ? "bg-mist/15 text-mist"
+                          : "bg-primary/12 text-primary",
                     )}
                   >
-                    {index + 1}
+                    {isHeard && !isPlaying ? (
+                      <Check aria-hidden="true" className="size-4" />
+                    ) : (
+                      index + 1
+                    )}
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-3">
@@ -218,7 +348,7 @@ export function TourPlayer({ stations }: { stations: Station[] }) {
                     )}
 
                     {station.audio_url ? (
-                      <div className="mt-4 flex items-center gap-3">
+                      <div className="mt-4 flex items-center gap-2">
                         <Button
                           type="button"
                           size="icon"
@@ -236,6 +366,26 @@ export function TourPlayer({ stations }: { stations: Station[] }) {
                             <Play aria-hidden="true" className="ml-0.5" />
                           )}
                         </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => skip(station.id, -15)}
+                          aria-label="15 Sekunden zurück"
+                          className="size-9 shrink-0 rounded-full text-muted-foreground"
+                        >
+                          <RotateCcw aria-hidden="true" className="size-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => skip(station.id, 15)}
+                          aria-label="15 Sekunden vor"
+                          className="size-9 shrink-0 rounded-full text-muted-foreground"
+                        >
+                          <RotateCw aria-hidden="true" className="size-4" />
+                        </Button>
                         <audio
                           ref={(el) => {
                             if (el) audioRefs.current.set(station.id, el);
@@ -251,12 +401,35 @@ export function TourPlayer({ stations }: { stations: Station[] }) {
                               current === station.id ? null : current,
                             )
                           }
+                          onEnded={() => {
+                            markHeard(station.id);
+                            setPlayingId((current) =>
+                              current === station.id ? null : current,
+                            );
+                          }}
                         />
                       </div>
                     ) : (
                       <p className="mt-3 text-sm italic text-muted-foreground/70">
                         Kein Audio hinterlegt.
                       </p>
+                    )}
+
+                    {station.transcript && (
+                      <details className="group mt-3">
+                        <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-mist hover:underline">
+                          <FileText aria-hidden="true" className="size-4" />
+                          <span className="group-open:hidden">
+                            Text anzeigen
+                          </span>
+                          <span className="hidden group-open:inline">
+                            Text ausblenden
+                          </span>
+                        </summary>
+                        <p className="mt-3 whitespace-pre-line rounded-lg bg-muted/60 p-4 text-sm leading-relaxed text-foreground/90">
+                          {station.transcript}
+                        </p>
+                      </details>
                     )}
                   </div>
                 </div>

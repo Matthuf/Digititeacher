@@ -95,6 +95,22 @@ export async function updateTour(tourId: string, formData: FormData) {
   redirect(`/studio/tours/${tourId}?saved=1`);
 }
 
+function stationFieldsFromForm(formData: FormData) {
+  const radius = formData.get("trigger_radius_m");
+  const duration = formData.get("audio_duration_seconds");
+
+  return {
+    title: String(formData.get("title") ?? "").trim(),
+    description: String(formData.get("description") ?? "") || null,
+    latitude: Number(formData.get("latitude")),
+    longitude: Number(formData.get("longitude")),
+    audio_url: String(formData.get("audio_url") ?? "") || null,
+    audio_duration_seconds: duration ? Number(duration) : null,
+    transcript: String(formData.get("transcript") ?? "") || null,
+    trigger_radius_m: radius ? Number(radius) : null,
+  };
+}
+
 export async function addStation(tourId: string, formData: FormData) {
   const supabase = await createClient();
 
@@ -106,11 +122,7 @@ export async function addStation(tourId: string, formData: FormData) {
   const { error } = await supabase.from("stations").insert({
     tour_id: tourId,
     order_index: count ?? 0,
-    title: String(formData.get("title") ?? "").trim(),
-    description: String(formData.get("description") ?? "") || null,
-    latitude: Number(formData.get("latitude")),
-    longitude: Number(formData.get("longitude")),
-    audio_url: String(formData.get("audio_url") ?? "") || null,
+    ...stationFieldsFromForm(formData),
   });
 
   if (error) {
@@ -121,6 +133,31 @@ export async function addStation(tourId: string, formData: FormData) {
 
   revalidatePath(`/studio/tours/${tourId}`);
   redirect(`/studio/tours/${tourId}`);
+}
+
+export async function updateStation(
+  tourId: string,
+  stationId: string,
+  formData: FormData,
+) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("stations")
+    .update({
+      ...stationFieldsFromForm(formData),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", stationId);
+
+  if (error) {
+    redirect(
+      `/studio/tours/${tourId}?error=${encodeURIComponent(error.message)}`,
+    );
+  }
+
+  revalidatePath(`/studio/tours/${tourId}`);
+  redirect(`/studio/tours/${tourId}?saved=1`);
 }
 
 export async function deleteStation(tourId: string, stationId: string) {

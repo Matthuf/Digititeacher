@@ -153,7 +153,7 @@ export default async function TourDetailPage({
       )}
 
       <div className="mt-10">
-        <TourPlayer stations={stations} />
+        <TourPlayer tourId={tour.id} stations={stations} />
       </div>
     </article>
   );
