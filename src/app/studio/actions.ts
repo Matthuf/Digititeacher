@@ -160,6 +160,90 @@ export async function updateStation(
   redirect(`/studio/tours/${tourId}?saved=1`);
 }
 
+export async function upsertTranslations(
+  tourId: string,
+  locale: string,
+  formData: FormData,
+) {
+  const supabase = await createClient();
+  const text = (key: string) => String(formData.get(key) ?? "").trim() || null;
+
+  // Tour-Ebene
+  const tourTitle = text("tour-title");
+  const tourDescription = text("tour-description");
+
+  let error = null;
+  if (tourTitle || tourDescription) {
+    ({ error } = await supabase.from("tour_translations").upsert(
+      {
+        tour_id: tourId,
+        locale,
+        title: tourTitle,
+        description: tourDescription,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "tour_id,locale" },
+    ));
+  } else {
+    ({ error } = await supabase
+      .from("tour_translations")
+      .delete()
+      .eq("tour_id", tourId)
+      .eq("locale", locale));
+  }
+
+  if (error) {
+    redirect(
+      `/studio/tours/${tourId}?error=${encodeURIComponent(error.message)}`,
+    );
+  }
+
+  // Stations-Ebene
+  const { data: stations } = await supabase
+    .from("stations")
+    .select("id")
+    .eq("tour_id", tourId);
+
+  for (const station of stations ?? []) {
+    const p = `s-${station.id}`;
+    const fields = {
+      title: text(`${p}-title`),
+      description: text(`${p}-description`),
+      transcript: text(`${p}-transcript`),
+      audio_url: text(`${p}-audio_url`),
+      audio_duration_seconds: formData.get(`${p}-audio_duration_seconds`)
+        ? Number(formData.get(`${p}-audio_duration_seconds`))
+        : null,
+    };
+    const hasContent = Object.values(fields).some((v) => v !== null);
+
+    const { error: stationError } = hasContent
+      ? await supabase.from("station_translations").upsert(
+          {
+            station_id: station.id,
+            locale,
+            ...fields,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "station_id,locale" },
+        )
+      : await supabase
+          .from("station_translations")
+          .delete()
+          .eq("station_id", station.id)
+          .eq("locale", locale);
+
+    if (stationError) {
+      redirect(
+        `/studio/tours/${tourId}?error=${encodeURIComponent(stationError.message)}`,
+      );
+    }
+  }
+
+  revalidatePath(`/studio/tours/${tourId}`);
+  redirect(`/studio/tours/${tourId}?saved=1`);
+}
+
 export async function deleteStation(tourId: string, stationId: string) {
   const supabase = await createClient();
   await supabase.from("stations").delete().eq("id", stationId);

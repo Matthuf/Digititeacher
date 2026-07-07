@@ -1,6 +1,11 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { Station, Tour } from "@/lib/tours";
+import type {
+  Station,
+  StationTranslation,
+  Tour,
+  TourTranslation,
+} from "@/lib/tours";
 import {
   addStation,
   deleteStation,
@@ -9,6 +14,7 @@ import {
 } from "@/app/studio/actions";
 import { GENRE_KEYS, GENRES } from "@/lib/genres";
 import { StationFields } from "./station-fields";
+import { TranslationsEditor } from "./translations-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,6 +62,26 @@ export default async function EditTourPage({
   const result = await getTourWithStations(id);
   if (!result) notFound();
   const { tour, stations } = result;
+
+  // Übersetzungen laden – tolerant, falls Migration 003 noch fehlt.
+  let tourTranslations: TourTranslation[] | null = null;
+  let stationTranslations: StationTranslation[] = [];
+  try {
+    const supabase = await createClient();
+    const [tt, st] = await Promise.all([
+      supabase.from("tour_translations").select("*").eq("tour_id", tour.id),
+      supabase
+        .from("station_translations")
+        .select("*")
+        .in("station_id", stations.map((s) => s.id)),
+    ]);
+    if (!tt.error) {
+      tourTranslations = tt.data ?? [];
+      stationTranslations = st.data ?? [];
+    }
+  } catch {
+    tourTranslations = null;
+  }
 
   const updateTourWithId = updateTour.bind(null, tour.id);
   const addStationWithId = addStation.bind(null, tour.id);
@@ -205,6 +231,21 @@ export default async function EditTourPage({
           </form>
         </CardContent>
       </Card>
+
+      {tourTranslations === null ? (
+        <p className="mt-10 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          Übersetzungen: Migration 003 (tour_translations /
+          station_translations) in Supabase ausführen, um Sprachfassungen zu
+          pflegen.
+        </p>
+      ) : (
+        <TranslationsEditor
+          tour={tour}
+          stations={stations}
+          tourTranslations={tourTranslations}
+          stationTranslations={stationTranslations}
+        />
+      )}
     </div>
   );
 }

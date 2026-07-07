@@ -31,11 +31,17 @@ export function AudioUpload({
   idPrefix,
   defaultUrl,
   defaultDuration,
+  urlFieldName = "audio_url",
+  durationFieldName = "audio_duration_seconds",
+  label = "Audio",
 }: {
   tourId: string;
   idPrefix: string;
   defaultUrl?: string | null;
   defaultDuration?: number | null;
+  urlFieldName?: string;
+  durationFieldName?: string;
+  label?: string;
 }) {
   const [url, setUrl] = useState(defaultUrl ?? "");
   const [duration, setDuration] = useState<number | null>(
@@ -86,7 +92,7 @@ export function AudioUpload({
 
   return (
     <div className="flex flex-col gap-2">
-      <Label htmlFor={`${idPrefix}-audio-url`}>Audio</Label>
+      <Label htmlFor={`${idPrefix}-audio-url`}>{label}</Label>
       <div className="flex items-center gap-2">
         <Button
           type="button"
@@ -116,7 +122,7 @@ export function AudioUpload({
         />
         <Input
           id={`${idPrefix}-audio-url`}
-          name="audio_url"
+          name={urlFieldName}
           placeholder="… oder Audio-URL einfügen"
           value={url}
           onChange={(e) => {
@@ -126,11 +132,7 @@ export function AudioUpload({
           className="min-w-0"
         />
       </div>
-      <input
-        type="hidden"
-        name="audio_duration_seconds"
-        value={duration ?? ""}
-      />
+      <input type="hidden" name={durationFieldName} value={duration ?? ""} />
       {error && <p className="text-sm text-destructive">{error}</p>}
       {url && !uploading && (
         <audio controls preload="none" src={url} className="h-10 w-full" />
