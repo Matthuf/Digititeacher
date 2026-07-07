@@ -13,6 +13,7 @@ import {
   updateTour,
 } from "@/app/studio/actions";
 import { GENRE_KEYS, GENRES } from "@/lib/genres";
+import { aiStatus } from "@/lib/ai/status";
 import { StationFields } from "./station-fields";
 import { TranslationsEditor } from "./translations-editor";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,7 @@ export default async function EditTourPage({
     tourTranslations = null;
   }
 
+  const ai = aiStatus();
   const updateTourWithId = updateTour.bind(null, tour.id);
   const addStationWithId = addStation.bind(null, tour.id);
 
@@ -207,6 +209,7 @@ export default async function EditTourPage({
                     idPrefix={`station-${station.id}`}
                     tourId={tour.id}
                     station={station}
+                    ai={ai}
                   />
                   <Button type="submit" className="mt-2 self-start">
                     Station speichern
@@ -244,6 +247,7 @@ export default async function EditTourPage({
           stations={stations}
           tourTranslations={tourTranslations}
           stationTranslations={stationTranslations}
+          ai={ai}
         />
       )}
     </div>

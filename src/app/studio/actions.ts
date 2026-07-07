@@ -244,6 +244,74 @@ export async function upsertTranslations(
   redirect(`/studio/tours/${tourId}?saved=1`);
 }
 
+export async function importTours(formData: FormData) {
+  const raw = String(formData.get("payload") ?? "");
+  let tours: import("@/lib/import/parse").ParsedTour[];
+  try {
+    tours = JSON.parse(raw);
+  } catch {
+    redirect("/studio/import?error=Ung%C3%BCltige%20Daten");
+  }
+
+  if (!Array.isArray(tours) || tours.length === 0) {
+    redirect("/studio/import?error=Keine%20Touren%20gefunden");
+  }
+
+  const supabase = await createClient();
+  let imported = 0;
+
+  for (const tour of tours) {
+    if (!tour.title?.trim()) continue;
+
+    const { data: created, error: tourError } = await supabase
+      .from("tours")
+      .insert({
+        title: tour.title.trim(),
+        slug: `${slugify(tour.title)}-${Date.now().toString(36)}-${imported}`,
+        region: tour.region ?? null,
+        duration_minutes: tour.duration_minutes ?? null,
+        difficulty: tour.difficulty ?? null,
+        genre: isGenre(tour.genre) ? tour.genre : null,
+        status: "draft",
+      })
+      .select("id")
+      .single();
+
+    if (tourError) {
+      redirect(`/studio/import?error=${encodeURIComponent(tourError.message)}`);
+    }
+
+    const stationRows = tour.stations
+      .filter((s) => s.title?.trim())
+      .map((s, index) => ({
+        tour_id: created.id,
+        order_index: index,
+        title: s.title.trim(),
+        description: s.description ?? null,
+        latitude: s.latitude ?? 0,
+        longitude: s.longitude ?? 0,
+        transcript: s.transcript ?? null,
+        audio_url: s.audio_url ?? null,
+      }));
+
+    if (stationRows.length > 0) {
+      const { error: stationError } = await supabase
+        .from("stations")
+        .insert(stationRows);
+      if (stationError) {
+        redirect(
+          `/studio/import?error=${encodeURIComponent(stationError.message)}`,
+        );
+      }
+    }
+
+    imported++;
+  }
+
+  revalidatePath("/studio");
+  redirect(`/studio?imported=${imported}`);
+}
+
 export async function deleteStation(tourId: string, stationId: string) {
   const supabase = await createClient();
   await supabase.from("stations").delete().eq("id", stationId);

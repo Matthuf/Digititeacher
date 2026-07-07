@@ -1,4 +1,6 @@
+import { Languages, Sparkles } from "lucide-react";
 import { upsertTranslations } from "@/app/studio/actions";
+import { generateStationAudio, translateTour } from "@/app/studio/ai-actions";
 import { AudioUpload } from "@/components/audio-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +16,8 @@ import {
   TRANSLATION_LOCALE_KEYS,
   TRANSLATION_LOCALES,
 } from "@/lib/locales";
+import { deeplSupports } from "@/lib/ai/deepl";
+import type { AiStatus } from "@/lib/ai/status";
 import type {
   Station,
   StationTranslation,
@@ -26,11 +30,13 @@ export function TranslationsEditor({
   stations,
   tourTranslations,
   stationTranslations,
+  ai,
 }: {
   tour: Tour;
   stations: Station[];
   tourTranslations: TourTranslation[];
   stationTranslations: StationTranslation[];
+  ai: AiStatus;
 }) {
   return (
     <Card className="mt-10">
@@ -65,6 +71,30 @@ export function TranslationsEditor({
                 action={upsertTranslations.bind(null, tour.id, locale)}
                 className="flex flex-col gap-4 border-t px-4 py-4"
               >
+                {ai.deepl && deeplSupports(locale) && (
+                  <div className="flex flex-wrap items-center gap-3 rounded-lg bg-muted/60 p-3">
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      size="sm"
+                      formAction={translateTour.bind(null, tour.id, locale)}
+                    >
+                      <Languages aria-hidden="true" />
+                      Mit DeepL übersetzen
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Füllt alle Felder aus der deutschen Basis – danach prüfen
+                      und speichern.
+                    </p>
+                  </div>
+                )}
+                {!deeplSupports(locale) && (
+                  <p className="rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
+                    DeepL unterstützt {TRANSLATION_LOCALES[locale]} nicht –
+                    diese Sprache bitte manuell erfassen.
+                  </p>
+                )}
+
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor={`${locale}-tour-title`}>
                     Tour-Titel ({tour.title})
@@ -137,6 +167,27 @@ export function TranslationsEditor({
                           defaultValue={t?.transcript ?? ""}
                         />
                       </div>
+                      {ai.elevenlabs && (
+                        <div>
+                          <Button
+                            type="submit"
+                            variant="outline"
+                            size="sm"
+                            formAction={generateStationAudio.bind(
+                              null,
+                              tour.id,
+                              station.id,
+                              locale,
+                            )}
+                          >
+                            <Sparkles aria-hidden="true" />
+                            Audio erzeugen (ElevenLabs)
+                          </Button>
+                          <p className="mt-1.5 text-xs text-muted-foreground">
+                            Nutzt das gespeicherte Transkript – erst speichern.
+                          </p>
+                        </div>
+                      )}
                     </fieldset>
                   );
                 })}

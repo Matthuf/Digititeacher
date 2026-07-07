@@ -1,17 +1,23 @@
+import { Sparkles } from "lucide-react";
+import { generateStationAudio } from "@/app/studio/ai-actions";
 import { AudioUpload } from "@/components/audio-upload";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import type { AiStatus } from "@/lib/ai/status";
 import type { Station } from "@/lib/tours";
 
 export function StationFields({
   idPrefix,
   tourId,
   station,
+  ai,
 }: {
   idPrefix: string;
   tourId: string;
   station?: Station;
+  ai?: AiStatus;
 }) {
   return (
     <>
@@ -87,6 +93,27 @@ export function StationFields({
           placeholder="Der gesprochene Text dieser Station …"
         />
       </div>
+      {ai?.elevenlabs && station && (
+        <div>
+          <Button
+            type="submit"
+            variant="outline"
+            size="sm"
+            formAction={generateStationAudio.bind(
+              null,
+              tourId,
+              station.id,
+              "de",
+            )}
+          >
+            <Sparkles aria-hidden="true" />
+            Deutsches Audio erzeugen (ElevenLabs)
+          </Button>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            Nutzt das gespeicherte Transkript – erst speichern.
+          </p>
+        </div>
+      )}
     </>
   );
 }

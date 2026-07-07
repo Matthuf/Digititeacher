@@ -9,6 +9,10 @@
     "playwright": {
       "command": "npx",
       "args": ["@playwright/mcp@latest"]
+    },
+    "animotion": {
+      "command": "npx",
+      "args": ["-y", "animotion-mcp"]
     }
   }
 }

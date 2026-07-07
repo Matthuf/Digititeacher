@@ -16,17 +16,34 @@ async function getAllTours(): Promise<Tour[]> {
   return data ?? [];
 }
 
-export default async function StudioDashboardPage() {
+export default async function StudioDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ imported?: string }>;
+}) {
   const tours = await getAllTours();
+  const { imported } = await searchParams;
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Deine Touren</h1>
-        <Button asChild>
-          <Link href="/studio/tours/new">Neue Tour</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href="/studio/import">Excel-Import</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/studio/tours/new">Neue Tour</Link>
+          </Button>
+        </div>
       </div>
+
+      {imported && (
+        <p className="mt-6 rounded-lg border border-mist/40 bg-mist/5 p-4 text-sm">
+          {imported} {Number(imported) === 1 ? "Tour" : "Touren"} als Entwurf
+          importiert.
+        </p>
+      )}
 
       {tours.length === 0 && (
         <p className="mt-8 rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
