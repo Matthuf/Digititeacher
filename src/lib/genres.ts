@@ -6,26 +6,31 @@ export const GENRES = {
     label: "Wissen & Natur",
     badgeClass: "bg-primary/10 text-primary border-primary/30",
     lineClass: "bg-primary",
+    colorVar: "var(--primary)",
   },
   kinder: {
     label: "Kindergeschichte",
     badgeClass: "bg-mist/10 text-mist border-mist/30",
     lineClass: "bg-mist",
+    colorVar: "var(--mist)",
   },
   romantik: {
     label: "Romantischer Rundgang",
     badgeClass: "bg-dusk/10 text-dusk border-dusk/30",
     lineClass: "bg-dusk",
+    colorVar: "var(--dusk)",
   },
   sagen: {
     label: "Sagen & Mystik",
     badgeClass: "bg-twilight/10 text-twilight border-twilight/30",
     lineClass: "bg-twilight",
+    colorVar: "var(--twilight)",
   },
   schule: {
     label: "Schule & Exkursion",
     badgeClass: "bg-secondary/10 text-foreground border-border",
     lineClass: "bg-secondary",
+    colorVar: "var(--secondary)",
   },
 } as const;
 

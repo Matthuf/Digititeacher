@@ -192,6 +192,37 @@ body {
   }
 }
 
+/* Hero sun: dezentes Atmen + Verstärkung, wenn über den Hero gehovert wird
+   (siehe group/hero auf der Hero-Section, group-hover/hero-Utilities). */
+.tr-sun-wrap {
+  transition: transform 0.7s cubic-bezier(0.21, 0.47, 0.32, 0.98);
+}
+
+.tr-sun-pulse {
+  animation: tr-sun-breathe 6s ease-in-out infinite;
+}
+
+@keyframes tr-sun-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.85;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tr-sun-wrap {
+    transition: none;
+  }
+  .tr-sun-pulse {
+    animation: none;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   html {
     scroll-behavior: smooth;

@@ -83,9 +83,17 @@ export function TwilightRidges({ className }: { className?: string }) {
         }}
       />
 
-      {/* Sun glow */}
-      <div className="absolute right-[6%] top-8 size-44 rounded-full bg-primary/25 blur-3xl dark:bg-primary/35 sm:size-64" />
-      <div className="absolute right-[11%] top-16 size-20 rounded-full bg-primary/60 blur-lg dark:bg-primary/80 sm:size-28" />
+      {/* Sun glow: dezentes Atmen, verstärkt sich beim Hover über den Hero
+          (group/hero wird von der Hero-Section im Elternbaum gesetzt). */}
+      <div className="tr-sun-wrap absolute right-[6%] top-8 size-44 group-hover/hero:scale-125 sm:size-64">
+        <div className="tr-sun-pulse size-full rounded-full bg-primary/25 blur-3xl dark:bg-primary/35" />
+      </div>
+      <div className="tr-sun-wrap absolute right-[11%] top-16 size-20 group-hover/hero:scale-125 sm:size-28">
+        <div
+          className="tr-sun-pulse size-full rounded-full bg-primary/60 blur-lg dark:bg-primary/80"
+          style={{ animationDelay: "-2s" }}
+        />
+      </div>
 
       {/* Ridge layers back to front, fog banks drifting between them */}
       {ridgeLayer(0, parallax, reduceMotion)}

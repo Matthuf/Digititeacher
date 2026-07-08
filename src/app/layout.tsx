@@ -20,7 +20,7 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Digititeacher Audioguides",
+  title: "SendaLore – Geschichten, die deinen Weg begleiten",
   description:
     "GPS-geführte Audiotouren zum Wandern – handgemacht, direkt im Browser, ohne App.",
 };

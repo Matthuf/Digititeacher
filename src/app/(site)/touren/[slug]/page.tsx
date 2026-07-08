@@ -22,6 +22,7 @@ import {
 import { GENRES, isGenre } from "@/lib/genres";
 import { TourPlayer } from "@/components/tour-player";
 import { Reveal } from "@/components/reveal";
+import { T } from "@/components/i18n/t";
 
 type TourData = {
   tour: Tour;
@@ -107,17 +108,17 @@ export default async function TourDetailPage({
     return (
       <div className="mx-auto max-w-3xl px-6 py-24 text-center">
         <h1 className="font-serif text-2xl font-semibold">
-          Tour kann gerade nicht geladen werden
+          <T k="tour.loadError.title" />
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Bitte versuche es in ein paar Minuten noch einmal.
+          <T k="tour.loadError.text" />
         </p>
         <Link
           href="/"
           className="mt-6 inline-flex items-center gap-2 text-sm text-primary hover:underline"
         >
           <ArrowLeft aria-hidden="true" className="size-4" />
-          Zurück zu allen Touren
+          <T k="tour.back" />
         </Link>
       </div>
     );
@@ -165,11 +166,11 @@ export default async function TourDetailPage({
             className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft aria-hidden="true" className="size-4" />
-            Alle Touren
+            <T k="tour.back" />
           </Link>
           {availableLocales.length > 1 && (
             <nav
-              aria-label="Sprache wählen"
+              aria-label="Sprache wählen / Choose language"
               className="flex items-center gap-1 rounded-full border p-1"
             >
               {availableLocales.map((locale) => (
@@ -225,7 +226,7 @@ export default async function TourDetailPage({
               <span className="flex items-center gap-1.5">
                 <Clock aria-hidden="true" className="size-4 text-primary" />
                 <span className="tabular-nums">
-                  {tour.duration_minutes} Minuten
+                  {tour.duration_minutes} <T k="tour.minutes" />
                 </span>
               </span>
             )}

@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { distanceMeters } from "@/lib/geo";
 import type { Station, StationMedia } from "@/lib/tours";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/i18n/language-context";
 
 const DEFAULT_TRIGGER_RADIUS_METERS = 40;
 
@@ -36,6 +37,7 @@ export function TourPlayer({
   stations: Station[];
   media?: Record<string, StationMedia[]>;
 }) {
+  const { t } = useLanguage();
   const [position, setPosition] = useState<GeolocationCoordinates | null>(
     null,
   );
@@ -203,7 +205,7 @@ export function TourPlayer({
             </span>
             <div>
               <p className="flex items-center gap-2 font-medium">
-                GPS-Autoplay
+                {t("player.autoplay.title")}
                 {autoPlay && (
                   <span
                     aria-hidden="true"
@@ -212,8 +214,7 @@ export function TourPlayer({
                 )}
               </p>
               <p className="mt-0.5 text-sm opacity-80">
-                Startet das Audio automatisch, sobald du eine Station
-                erreichst.
+                {t("player.autoplay.text")}
               </p>
             </div>
           </div>
@@ -226,7 +227,7 @@ export function TourPlayer({
                 "border border-primary/50 bg-primary/15 text-secondary-foreground hover:bg-primary/25",
             )}
           >
-            {autoPlay ? "Aktiv – ausschalten" : "Aktivieren"}
+            {autoPlay ? t("player.autoplay.on") : t("player.autoplay.off")}
           </Button>
         </div>
         {geoError && (
@@ -261,9 +262,9 @@ export function TourPlayer({
           <div className="flex items-center justify-between text-sm">
             <p className="text-muted-foreground">
               <span className="font-medium text-foreground">
-                {heardCount} von {stations.length}
+                {heardCount} {t("player.of")} {stations.length}
               </span>{" "}
-              Stationen gehört
+              {t("player.progress")}
             </p>
           </div>
           <div
@@ -414,7 +415,7 @@ export function TourPlayer({
                       </div>
                     ) : (
                       <p className="mt-3 text-sm italic text-muted-foreground/70">
-                        Kein Audio hinterlegt.
+                        {t("player.noAudio")}
                       </p>
                     )}
 
@@ -423,10 +424,10 @@ export function TourPlayer({
                         <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-mist hover:underline">
                           <FileText aria-hidden="true" className="size-4" />
                           <span className="group-open:hidden">
-                            Text anzeigen
+                            {t("player.transcriptShow")}
                           </span>
                           <span className="hidden group-open:inline">
-                            Text ausblenden
+                            {t("player.transcriptHide")}
                           </span>
                         </summary>
                         <p className="mt-3 whitespace-pre-line rounded-lg bg-muted/60 p-4 text-sm leading-relaxed text-foreground/90">
