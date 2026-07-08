@@ -13,7 +13,7 @@ export function SiteHeader() {
         <nav className="flex items-center gap-6 text-sm">
           <Link
             href="/#touren"
-            className="text-muted-foreground transition-colors hover:text-foreground"
+            className="tr-navlink text-muted-foreground transition-colors hover:text-foreground"
           >
             Touren
           </Link>

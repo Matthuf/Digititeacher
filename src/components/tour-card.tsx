@@ -10,7 +10,7 @@ export function TourCard({ tour }: { tour: Tour }) {
 
   return (
     <Link href={`/touren/${tour.slug}`} className="group block h-full">
-      <article className="flex h-full flex-col overflow-hidden rounded-2xl border bg-card shadow-sm transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-lg group-hover:shadow-foreground/10">
+      <article className="tr-tile flex h-full flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
         <div className="relative aspect-[3/2] overflow-hidden">
           {tour.cover_image_url ? (
             <Image

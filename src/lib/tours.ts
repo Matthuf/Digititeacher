@@ -31,6 +31,15 @@ export type Station = {
   image_url: string | null;
 };
 
+export type StationMedia = {
+  id: string;
+  station_id: string;
+  media_type: "image" | "video";
+  url: string;
+  caption: string | null;
+  order_index: number;
+};
+
 export type TourTranslation = {
   id: string;
   tour_id: string;

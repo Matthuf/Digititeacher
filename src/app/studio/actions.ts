@@ -312,6 +312,46 @@ export async function importTours(formData: FormData) {
   redirect(`/studio?imported=${imported}`);
 }
 
+export async function addStationMedia(
+  tourId: string,
+  stationId: string,
+  formData: FormData,
+) {
+  const url = String(formData.get("url") ?? "").trim();
+  const mediaType = String(formData.get("media_type") ?? "");
+  if (!url || (mediaType !== "image" && mediaType !== "video")) {
+    redirect(`/studio/tours/${tourId}?error=Ung%C3%BCltiges%20Medium`);
+  }
+
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("station_media")
+    .select("id", { count: "exact", head: true })
+    .eq("station_id", stationId);
+
+  const { error } = await supabase.from("station_media").insert({
+    station_id: stationId,
+    media_type: mediaType,
+    url,
+    caption: String(formData.get("caption") ?? "").trim() || null,
+    order_index: count ?? 0,
+  });
+
+  if (error) {
+    redirect(`/studio/tours/${tourId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath(`/studio/tours/${tourId}`);
+  redirect(`/studio/tours/${tourId}`);
+}
+
+export async function deleteStationMedia(tourId: string, mediaId: string) {
+  const supabase = await createClient();
+  await supabase.from("station_media").delete().eq("id", mediaId);
+  revalidatePath(`/studio/tours/${tourId}`);
+  redirect(`/studio/tours/${tourId}`);
+}
+
 export async function deleteStation(tourId: string, stationId: string) {
   const supabase = await createClient();
   await supabase.from("stations").delete().eq("id", stationId);

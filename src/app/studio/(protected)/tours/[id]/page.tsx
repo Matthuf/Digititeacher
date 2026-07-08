@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Station,
+  StationMedia,
   StationTranslation,
   Tour,
   TourTranslation,
@@ -9,11 +10,13 @@ import type {
 import {
   addStation,
   deleteStation,
+  deleteStationMedia,
   updateStation,
   updateTour,
 } from "@/app/studio/actions";
 import { GENRE_KEYS, GENRES } from "@/lib/genres";
 import { aiStatus } from "@/lib/ai/status";
+import { MediaUpload } from "@/components/media-upload";
 import { StationFields } from "./station-fields";
 import { TranslationsEditor } from "./translations-editor";
 import { Button } from "@/components/ui/button";
@@ -82,6 +85,26 @@ export default async function EditTourPage({
     }
   } catch {
     tourTranslations = null;
+  }
+
+  // Medien pro Station laden – tolerant, falls Migration 004 noch fehlt.
+  const mediaByStation = new Map<string, StationMedia[]>();
+  try {
+    const supabase = await createClient();
+    const { data, error: mediaError } = await supabase
+      .from("station_media")
+      .select("*")
+      .in("station_id", stations.map((s) => s.id))
+      .order("order_index", { ascending: true });
+    if (!mediaError) {
+      for (const m of data ?? []) {
+        const list = mediaByStation.get(m.station_id) ?? [];
+        list.push(m);
+        mediaByStation.set(m.station_id, list);
+      }
+    }
+  } catch {
+    // Migration 004 fehlt – Medien-Bereich zeigt dann nur den Hinweis.
   }
 
   const ai = aiStatus();
@@ -215,6 +238,54 @@ export default async function EditTourPage({
                     Station speichern
                   </Button>
                 </form>
+              </details>
+
+              <details className="group mt-2">
+                <summary className="cursor-pointer list-none text-sm font-medium text-primary hover:underline">
+                  Fotos &amp; Videos
+                  {mediaByStation.get(station.id)?.length
+                    ? ` (${mediaByStation.get(station.id)!.length})`
+                    : ""}
+                </summary>
+                <div className="mt-4 flex flex-col gap-4 border-t pt-4">
+                  {(mediaByStation.get(station.id)?.length ?? 0) > 0 && (
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      {mediaByStation.get(station.id)!.map((m) => (
+                        <div
+                          key={m.id}
+                          className="group/media relative overflow-hidden rounded-md border"
+                        >
+                          {m.media_type === "video" ? (
+                            <video
+                              src={m.url}
+                              className="aspect-square w-full object-cover"
+                            />
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={m.url}
+                              alt={m.caption ?? ""}
+                              className="aspect-square w-full object-cover"
+                            />
+                          )}
+                          <form
+                            action={deleteStationMedia.bind(null, tour.id, m.id)}
+                            className="absolute right-1 top-1"
+                          >
+                            <button
+                              type="submit"
+                              aria-label="Medium entfernen"
+                              className="rounded-full bg-background/90 px-2 py-0.5 text-xs font-medium text-destructive shadow-sm"
+                            >
+                              ✕
+                            </button>
+                          </form>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <MediaUpload tourId={tour.id} stationId={station.id} />
+                </div>
               </details>
             </CardContent>
           </Card>

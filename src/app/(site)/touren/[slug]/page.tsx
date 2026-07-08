@@ -8,6 +8,7 @@ import {
   localizeStations,
   localizeTour,
   type Station,
+  type StationMedia,
   type StationTranslation,
   type Tour,
   type TourTranslation,
@@ -27,6 +28,7 @@ type TourData = {
   stations: Station[];
   tourTranslations: TourTranslation[];
   stationTranslations: StationTranslation[];
+  media: Record<string, StationMedia[]>;
 };
 
 async function getTour(slug: string): Promise<TourData | null> {
@@ -49,20 +51,35 @@ async function getTour(slug: string): Promise<TourData | null> {
 
   if (stationsError) throw stationsError;
 
-  // Übersetzungen sind optional (Migration 003) – Fehler still ignorieren.
-  const [tt, st] = await Promise.all([
+  const stationIds = (stations ?? []).map((s) => s.id);
+
+  // Übersetzungen und Medien sind optional (Migration 003/004) – still ignorieren.
+  const [tt, st, md] = await Promise.all([
     supabase.from("tour_translations").select("*").eq("tour_id", tour.id),
     supabase
       .from("station_translations")
       .select("*")
-      .in("station_id", (stations ?? []).map((s) => s.id)),
+      .in("station_id", stationIds),
+    supabase
+      .from("station_media")
+      .select("*")
+      .in("station_id", stationIds)
+      .order("order_index", { ascending: true }),
   ]);
+
+  const media: Record<string, StationMedia[]> = {};
+  if (!md.error) {
+    for (const m of md.data ?? []) {
+      (media[m.station_id] ??= []).push(m);
+    }
+  }
 
   return {
     tour,
     stations: stations ?? [],
     tourTranslations: tt.error ? [] : (tt.data ?? []),
     stationTranslations: st.error ? [] : (st.data ?? []),
+    media,
   };
 }
 
@@ -245,7 +262,7 @@ export default async function TourDetailPage({
       )}
 
       <div className="mt-10">
-        <TourPlayer tourId={tour.id} stations={stations} />
+        <TourPlayer tourId={tour.id} stations={stations} media={result.media} />
       </div>
     </article>
   );

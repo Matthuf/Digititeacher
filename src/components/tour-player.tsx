@@ -12,9 +12,10 @@ import {
   RotateCw,
 } from "lucide-react";
 import { TourMap } from "@/components/tour-map";
+import { MediaCarousel } from "@/components/media-carousel";
 import { Button } from "@/components/ui/button";
 import { distanceMeters } from "@/lib/geo";
-import type { Station } from "@/lib/tours";
+import type { Station, StationMedia } from "@/lib/tours";
 import { cn } from "@/lib/utils";
 
 const DEFAULT_TRIGGER_RADIUS_METERS = 40;
@@ -29,9 +30,11 @@ function formatDistance(meters: number) {
 export function TourPlayer({
   tourId,
   stations,
+  media = {},
 }: {
   tourId: string;
   stations: Station[];
+  media?: Record<string, StationMedia[]>;
 }) {
   const [position, setPosition] = useState<GeolocationCoordinates | null>(
     null,
@@ -431,6 +434,8 @@ export function TourPlayer({
                         </p>
                       </details>
                     )}
+
+                    <MediaCarousel media={media[station.id] ?? []} />
                   </div>
                 </div>
               </div>

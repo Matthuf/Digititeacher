@@ -106,6 +106,92 @@ body {
   background: color-mix(in srgb, var(--primary) 30%, transparent);
 }
 
+/* ---- Hover-Effekte ------------------------------------------------------ */
+
+/* Tour-Kachel: goldener Rand-Glow + diagonaler Licht-Sheen, der beim Hover
+   einmal über die Karte wandert. */
+.tr-tile {
+  position: relative;
+  isolation: isolate;
+  transition:
+    transform 0.35s cubic-bezier(0.21, 0.47, 0.32, 0.98),
+    box-shadow 0.35s ease,
+    border-color 0.35s ease;
+}
+
+.tr-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    color-mix(in srgb, var(--primary) 22%, transparent) 48%,
+    transparent 66%
+  );
+  background-size: 250% 250%;
+  background-position: 150% 0;
+  opacity: 0;
+  transition:
+    opacity 0.3s ease,
+    background-position 0.7s ease;
+}
+
+.group:hover .tr-tile,
+.tr-tile:hover {
+  transform: translateY(-6px);
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  box-shadow:
+    0 18px 40px -18px color-mix(in srgb, var(--primary) 45%, transparent),
+    0 8px 20px -12px rgb(0 0 0 / 0.25);
+}
+
+.group:hover .tr-tile::after,
+.tr-tile:hover::after {
+  opacity: 1;
+  background-position: -50% 0;
+}
+
+/* Nav-Link: Unterstrich wächst mittig nach aussen. */
+.tr-navlink {
+  position: relative;
+  padding-bottom: 2px;
+}
+
+.tr-navlink::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  border-radius: 2px;
+  background: var(--primary);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.28s cubic-bezier(0.21, 0.47, 0.32, 0.98);
+}
+
+.tr-navlink:hover::after,
+.tr-navlink[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tr-tile,
+  .tr-tile::after,
+  .tr-navlink::after {
+    transition: none;
+  }
+  .group:hover .tr-tile,
+  .tr-tile:hover {
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   html {
     scroll-behavior: smooth;
