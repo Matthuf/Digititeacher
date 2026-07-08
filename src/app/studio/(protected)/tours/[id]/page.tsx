@@ -17,6 +17,7 @@ import {
 import { GENRE_KEYS, GENRES } from "@/lib/genres";
 import { aiStatus } from "@/lib/ai/status";
 import { MediaUpload } from "@/components/media-upload";
+import { CoverUpload } from "@/components/cover-upload";
 import { StationFields } from "./station-fields";
 import { TranslationsEditor } from "./translations-editor";
 import { Button } from "@/components/ui/button";
@@ -131,6 +132,7 @@ export default async function EditTourPage({
                 defaultValue={tour.description ?? ""}
               />
             </div>
+            <CoverUpload tourId={tour.id} defaultUrl={tour.cover_image_url} />
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="region">Region</Label>

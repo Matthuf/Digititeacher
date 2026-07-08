@@ -79,6 +79,7 @@ export async function updateTour(tourId: string, formData: FormData) {
       difficulty: String(formData.get("difficulty") ?? "") || null,
       genre: genreFromForm(formData),
       description: String(formData.get("description") ?? "") || null,
+      cover_image_url: String(formData.get("cover_image_url") ?? "") || null,
       status: formData.get("status") === "published" ? "published" : "draft",
       updated_at: new Date().toISOString(),
     })
