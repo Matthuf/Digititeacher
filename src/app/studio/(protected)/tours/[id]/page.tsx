@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type {
   Station,
   StationMedia,
+  StationQuiz,
   StationTranslation,
   Tour,
   TourFeedback,
@@ -22,6 +23,7 @@ import { aiStatus } from "@/lib/ai/status";
 import { MediaUpload } from "@/components/media-upload";
 import { CoverUpload } from "@/components/cover-upload";
 import { StationFields } from "./station-fields";
+import { StationQuizEditor } from "./station-quiz-editor";
 import { TranslationsEditor } from "./translations-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -134,6 +136,25 @@ export default async function EditTourPage({
   } catch {
     feedback = null;
   }
+
+  // Quiz pro Station laden – tolerant, falls Migration 006 noch fehlt.
+  const quizByStation = new Map<string, StationQuiz>();
+  let quizSupported = true;
+  try {
+    const supabase = await createClient();
+    const { data, error: quizError } = await supabase
+      .from("station_quiz")
+      .select("*")
+      .in("station_id", stations.map((s) => s.id));
+    if (quizError) {
+      quizSupported = false;
+    } else {
+      for (const q of data ?? []) quizByStation.set(q.station_id, q);
+    }
+  } catch {
+    quizSupported = false;
+  }
+  const isQuizGenre = tour.genre === "kinder" || tour.genre === "schule";
 
   const ai = aiStatus();
   const updateTourWithId = updateTour.bind(null, tour.id);
@@ -316,6 +337,28 @@ export default async function EditTourPage({
                   <MediaUpload tourId={tour.id} stationId={station.id} />
                 </div>
               </details>
+
+              {isQuizGenre && (
+                <details className="group mt-2">
+                  <summary className="cursor-pointer list-none text-sm font-medium text-primary hover:underline">
+                    Quiz{quizByStation.has(station.id) ? " ✓" : ""}
+                  </summary>
+                  <div className="mt-4 border-t pt-4">
+                    {!quizSupported ? (
+                      <p className="text-sm text-muted-foreground">
+                        Migration 006 (station_quiz) in Supabase ausführen, um
+                        Quizfragen zu pflegen.
+                      </p>
+                    ) : (
+                      <StationQuizEditor
+                        tourId={tour.id}
+                        stationId={station.id}
+                        quiz={quizByStation.get(station.id) ?? null}
+                      />
+                    )}
+                  </div>
+                </details>
+              )}
             </CardContent>
           </Card>
         ))}

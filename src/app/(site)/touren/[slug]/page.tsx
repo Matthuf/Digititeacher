@@ -9,6 +9,7 @@ import {
   localizeTour,
   type Station,
   type StationMedia,
+  type StationQuiz,
   type StationTranslation,
   type Tour,
   type TourFeedback,
@@ -34,6 +35,7 @@ type TourData = {
   stationTranslations: StationTranslation[];
   media: Record<string, StationMedia[]>;
   feedback: TourFeedback[];
+  quiz: Record<string, StationQuiz>;
 };
 
 async function getTour(slug: string): Promise<TourData | null> {
@@ -58,9 +60,9 @@ async function getTour(slug: string): Promise<TourData | null> {
 
   const stationIds = (stations ?? []).map((s) => s.id);
 
-  // Übersetzungen, Medien und Feedback sind optional (Migration 003/004/005) –
-  // still ignorieren, falls die Migration noch nicht ausgeführt wurde.
-  const [tt, st, md, fb] = await Promise.all([
+  // Übersetzungen, Medien, Feedback und Quiz sind optional
+  // (Migration 003/004/005/006) – still ignorieren, falls sie noch fehlen.
+  const [tt, st, md, fb, qz] = await Promise.all([
     supabase.from("tour_translations").select("*").eq("tour_id", tour.id),
     supabase
       .from("station_translations")
@@ -76,6 +78,7 @@ async function getTour(slug: string): Promise<TourData | null> {
       .select("*")
       .eq("tour_id", tour.id)
       .order("created_at", { ascending: false }),
+    supabase.from("station_quiz").select("*").in("station_id", stationIds),
   ]);
 
   const media: Record<string, StationMedia[]> = {};
@@ -83,6 +86,11 @@ async function getTour(slug: string): Promise<TourData | null> {
     for (const m of md.data ?? []) {
       (media[m.station_id] ??= []).push(m);
     }
+  }
+
+  const quiz: Record<string, StationQuiz> = {};
+  if (!qz.error) {
+    for (const q of qz.data ?? []) quiz[q.station_id] = q;
   }
 
   // Aufruf für die Studio-Statistik zählen – best effort, kein Blocker.
@@ -101,6 +109,7 @@ async function getTour(slug: string): Promise<TourData | null> {
     stationTranslations: st.error ? [] : (st.data ?? []),
     media,
     feedback: fb.error ? [] : (fb.data ?? []),
+    quiz,
   };
 }
 
@@ -284,7 +293,13 @@ export default async function TourDetailPage({
       )}
 
       <div className="mt-10">
-        <TourPlayer tourId={tour.id} stations={stations} media={result.media} />
+        <TourPlayer
+          tourId={tour.id}
+          stations={stations}
+          media={result.media}
+          quiz={result.quiz}
+          genre={tour.genre}
+        />
       </div>
 
       <TourFeedbackSection

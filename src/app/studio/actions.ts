@@ -361,6 +361,57 @@ export async function deleteStation(tourId: string, stationId: string) {
   redirect(`/studio/tours/${tourId}`);
 }
 
+export async function upsertStationQuiz(
+  tourId: string,
+  stationId: string,
+  formData: FormData,
+) {
+  const question = String(formData.get("question") ?? "").trim();
+  const options = ["option-0", "option-1", "option-2", "option-3"]
+    .map((key) => String(formData.get(key) ?? "").trim())
+    .filter(Boolean);
+  const correctIndex = Number(formData.get("correct_index"));
+
+  const supabase = await createClient();
+
+  if (!question || options.length < 2) {
+    await supabase.from("station_quiz").delete().eq("station_id", stationId);
+    revalidatePath(`/studio/tours/${tourId}`);
+    redirect(`/studio/tours/${tourId}?saved=1`);
+  }
+
+  const { error } = await supabase.from("station_quiz").upsert(
+    {
+      station_id: stationId,
+      question,
+      options,
+      correct_index:
+        Number.isInteger(correctIndex) && correctIndex < options.length
+          ? correctIndex
+          : 0,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "station_id" },
+  );
+
+  if (error) {
+    redirect(
+      `/studio/tours/${tourId}?error=${encodeURIComponent(error.message)}`,
+    );
+  }
+
+  revalidatePath(`/studio/tours/${tourId}`);
+  redirect(`/studio/tours/${tourId}?saved=1`);
+}
+
+export async function deleteStationQuiz(tourId: string, stationId: string) {
+  const supabase = await createClient();
+  await supabase.from("station_quiz").delete().eq("station_id", stationId);
+
+  revalidatePath(`/studio/tours/${tourId}`);
+  redirect(`/studio/tours/${tourId}`);
+}
+
 export async function deleteFeedback(tourId: string, feedbackId: string) {
   const supabase = await createClient();
   await supabase.from("tour_feedback").delete().eq("id", feedbackId);

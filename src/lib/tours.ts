@@ -59,6 +59,14 @@ export type StationTranslation = {
   audio_duration_seconds: number | null;
 };
 
+export type StationQuiz = {
+  id: string;
+  station_id: string;
+  question: string;
+  options: string[];
+  correct_index: number;
+};
+
 export type TourFeedback = {
   id: string;
   tour_id: string;

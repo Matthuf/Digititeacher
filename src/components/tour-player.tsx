@@ -4,20 +4,88 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Check,
   FileText,
+  HelpCircle,
   MapPin,
   Navigation,
   Pause,
   Play,
   RotateCcw,
   RotateCw,
+  Trophy,
 } from "lucide-react";
 import { TourMap } from "@/components/tour-map";
 import { MediaCarousel } from "@/components/media-carousel";
 import { Button } from "@/components/ui/button";
 import { distanceMeters } from "@/lib/geo";
-import type { Station, StationMedia } from "@/lib/tours";
+import type { Station, StationMedia, StationQuiz } from "@/lib/tours";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/language-context";
+
+const QUIZ_GENRES = new Set(["kinder", "schule"]);
+
+function StationQuizBlock({
+  quiz,
+  answer,
+  onAnswer,
+}: {
+  quiz: StationQuiz;
+  answer?: "correct" | "wrong";
+  onAnswer: (result: "correct" | "wrong") => void;
+}) {
+  const { t } = useLanguage();
+  const [selected, setSelected] = useState<number | null>(null);
+  const revealed = answer !== undefined;
+
+  function choose(i: number) {
+    if (revealed) return;
+    setSelected(i);
+    onAnswer(i === quiz.correct_index ? "correct" : "wrong");
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border border-dashed border-primary/40 bg-primary/[0.03] p-4">
+      <p className="flex items-start gap-1.5 text-sm font-medium">
+        <HelpCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
+        {quiz.question}
+      </p>
+      <div className="mt-3 flex flex-col gap-2">
+        {quiz.options.map((opt, i) => {
+          const isCorrect = i === quiz.correct_index;
+          const isSelected = selected === i;
+          return (
+            <button
+              key={i}
+              type="button"
+              disabled={revealed}
+              onClick={() => choose(i)}
+              className={cn(
+                "rounded-lg border px-3 py-2 text-left text-sm transition-colors",
+                !revealed && "hover:border-primary/60",
+                revealed && isCorrect && "border-mist bg-mist/10 text-foreground",
+                revealed &&
+                  isSelected &&
+                  !isCorrect &&
+                  "border-destructive bg-destructive/10",
+              )}
+            >
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+      {answer && (
+        <p
+          className={cn(
+            "mt-2 text-sm font-medium",
+            answer === "correct" ? "text-mist" : "text-destructive",
+          )}
+        >
+          {answer === "correct" ? t("quiz.correct") : t("quiz.wrong")}
+        </p>
+      )}
+    </div>
+  );
+}
 
 const DEFAULT_TRIGGER_RADIUS_METERS = 40;
 
@@ -32,10 +100,14 @@ export function TourPlayer({
   tourId,
   stations,
   media = {},
+  quiz = {},
+  genre,
 }: {
   tourId: string;
   stations: Station[];
   media?: Record<string, StationMedia[]>;
+  quiz?: Record<string, StationQuiz>;
+  genre?: string | null;
 }) {
   const { t } = useLanguage();
   const [position, setPosition] = useState<GeolocationCoordinates | null>(
@@ -45,14 +117,19 @@ export function TourPlayer({
   const [autoPlay, setAutoPlay] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [heard, setHeard] = useState<Set<string>>(new Set());
+  const [quizAnswers, setQuizAnswers] = useState<
+    Record<string, "correct" | "wrong">
+  >({});
   const audioRefs = useRef(new Map<string, HTMLAudioElement>());
   const triggeredRef = useRef(new Set<string>());
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
   const storageKey = `dt-heard-${tourId}`;
+  const quizStorageKey = `dt-quiz-${tourId}`;
+  const showQuiz = genre ? QUIZ_GENRES.has(genre) : false;
 
-  // Gehörte Stationen aus localStorage laden – nach der Hydration,
-  // damit Server- und Client-HTML übereinstimmen.
+  // Gehörte Stationen + Quiz-Antworten aus localStorage laden – nach der
+  // Hydration, damit Server- und Client-HTML übereinstimmen.
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
@@ -61,9 +138,31 @@ export function TourPlayer({
       } catch {
         // localStorage nicht verfügbar (z. B. Privatmodus) – Fortschritt aus.
       }
+      try {
+        const raw = localStorage.getItem(quizStorageKey);
+        if (raw) setQuizAnswers(JSON.parse(raw));
+      } catch {
+        // ignorieren
+      }
     }, 0);
     return () => clearTimeout(timer);
-  }, [storageKey]);
+  }, [storageKey, quizStorageKey]);
+
+  const answerQuiz = useCallback(
+    (stationId: string, result: "correct" | "wrong") => {
+      setQuizAnswers((current) => {
+        if (current[stationId]) return current;
+        const next = { ...current, [stationId]: result };
+        try {
+          localStorage.setItem(quizStorageKey, JSON.stringify(next));
+        } catch {
+          // ignorieren
+        }
+        return next;
+      });
+    },
+    [quizStorageKey],
+  );
 
   const markHeard = useCallback(
     (id: string) => {
@@ -193,6 +292,12 @@ export function TourPlayer({
   }
 
   const heardCount = stations.filter((s) => heard.has(s.id)).length;
+  const quizStationIds = stations
+    .filter((s) => quiz[s.id])
+    .map((s) => s.id);
+  const quizPoints = quizStationIds.filter(
+    (id) => quizAnswers[id] === "correct",
+  ).length;
 
   return (
     <div className="flex flex-col gap-8">
@@ -266,6 +371,12 @@ export function TourPlayer({
               </span>{" "}
               {t("player.progress")}
             </p>
+            {showQuiz && quizStationIds.length > 0 && (
+              <p className="flex items-center gap-1.5 font-medium text-primary">
+                <Trophy aria-hidden="true" className="size-4" />
+                {quizPoints} / {quizStationIds.length} {t("quiz.points")}
+              </p>
+            )}
           </div>
           <div
             role="progressbar"
@@ -437,6 +548,14 @@ export function TourPlayer({
                     )}
 
                     <MediaCarousel media={media[station.id] ?? []} />
+
+                    {showQuiz && quiz[station.id] && (
+                      <StationQuizBlock
+                        quiz={quiz[station.id]}
+                        answer={quizAnswers[station.id]}
+                        onAnswer={(result) => answerQuiz(station.id, result)}
+                      />
+                    )}
                   </div>
                 </div>
               </div>

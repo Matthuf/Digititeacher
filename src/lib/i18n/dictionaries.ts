@@ -74,6 +74,9 @@ export const dictionaries: Record<UiLocale, Dict> = {
     "feedback.thanks": "Danke für dein Feedback!",
     "feedback.count.one": "Bewertung",
     "feedback.count.other": "Bewertungen",
+    "quiz.correct": "Richtig! 🎉",
+    "quiz.wrong": "Leider falsch.",
+    "quiz.points": "Punkte",
   },
   en: {
     "nav.tours": "Tours",
@@ -135,5 +138,8 @@ export const dictionaries: Record<UiLocale, Dict> = {
     "feedback.thanks": "Thanks for your feedback!",
     "feedback.count.one": "review",
     "feedback.count.other": "reviews",
+    "quiz.correct": "Correct! 🎉",
+    "quiz.wrong": "Not quite.",
+    "quiz.points": "points",
   },
 };
