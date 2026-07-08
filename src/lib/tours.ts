@@ -59,6 +59,14 @@ export type StationTranslation = {
   audio_duration_seconds: number | null;
 };
 
+export type TourFeedback = {
+  id: string;
+  tour_id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+};
+
 /** Feldweises Fallback: Übersetzung, sonst deutsche Basis. */
 export function localizeTour(tour: Tour, t?: TourTranslation): Tour {
   if (!t) return tour;

@@ -1,14 +1,17 @@
 import { notFound } from "next/navigation";
+import { Eye, Star } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Station,
   StationMedia,
   StationTranslation,
   Tour,
+  TourFeedback,
   TourTranslation,
 } from "@/lib/tours";
 import {
   addStation,
+  deleteFeedback,
   deleteStation,
   deleteStationMedia,
   updateStation,
@@ -106,6 +109,30 @@ export default async function EditTourPage({
     }
   } catch {
     // Migration 004 fehlt – Medien-Bereich zeigt dann nur den Hinweis.
+  }
+
+  // Feedback + Aufrufe laden – tolerant, falls Migration 005 noch fehlt.
+  let feedback: TourFeedback[] | null = null;
+  let viewCount = 0;
+  try {
+    const supabase = await createClient();
+    const [fb, views] = await Promise.all([
+      supabase
+        .from("tour_feedback")
+        .select("*")
+        .eq("tour_id", tour.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("tour_views")
+        .select("id", { count: "exact", head: true })
+        .eq("tour_id", tour.id),
+    ]);
+    if (!fb.error) {
+      feedback = fb.data ?? [];
+      viewCount = views.count ?? 0;
+    }
+  } catch {
+    feedback = null;
   }
 
   const ai = aiStatus();
@@ -322,6 +349,66 @@ export default async function EditTourPage({
           stationTranslations={stationTranslations}
           ai={ai}
         />
+      )}
+
+      <h2 className="mt-10 text-xl font-semibold tracking-tight">
+        Feedback &amp; Statistik
+      </h2>
+
+      {feedback === null ? (
+        <p className="mt-4 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          Migration 005 (tour_feedback / tour_views) in Supabase ausführen, um
+          Bewertungen und Aufrufe zu sehen.
+        </p>
+      ) : (
+        <Card className="mt-4">
+          <CardContent className="py-4">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <Eye aria-hidden="true" className="size-4" />
+                {viewCount} Aufrufe
+              </span>
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <Star aria-hidden="true" className="size-4 fill-current text-primary" />
+                {feedback.length > 0
+                  ? `${(feedback.reduce((sum, f) => sum + f.rating, 0) / feedback.length).toFixed(1)} Ø (${feedback.length})`
+                  : "Noch keine Bewertungen"}
+              </span>
+            </div>
+
+            {feedback.length > 0 && (
+              <ul className="mt-4 flex flex-col gap-3 border-t pt-4">
+                {feedback.map((f) => (
+                  <li
+                    key={f.id}
+                    className="flex items-start justify-between gap-4 text-sm"
+                  >
+                    <div>
+                      <div className="flex items-center gap-0.5 text-primary">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <Star
+                            key={i}
+                            aria-hidden="true"
+                            className="size-3.5"
+                            fill={i <= f.rating ? "currentColor" : "none"}
+                          />
+                        ))}
+                      </div>
+                      {f.comment && (
+                        <p className="mt-1 text-muted-foreground">{f.comment}</p>
+                      )}
+                    </div>
+                    <form action={deleteFeedback.bind(null, tour.id, f.id)}>
+                      <Button type="submit" variant="ghost" size="sm">
+                        Entfernen
+                      </Button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );

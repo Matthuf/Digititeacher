@@ -11,6 +11,7 @@ import {
   type StationMedia,
   type StationTranslation,
   type Tour,
+  type TourFeedback,
   type TourTranslation,
 } from "@/lib/tours";
 import {
@@ -21,8 +22,10 @@ import {
 } from "@/lib/locales";
 import { GENRES, isGenre } from "@/lib/genres";
 import { TourPlayer } from "@/components/tour-player";
+import { TourFeedbackSection } from "@/components/tour-feedback";
 import { Reveal } from "@/components/reveal";
 import { T } from "@/components/i18n/t";
+import { submitFeedback } from "./actions";
 
 type TourData = {
   tour: Tour;
@@ -30,6 +33,7 @@ type TourData = {
   tourTranslations: TourTranslation[];
   stationTranslations: StationTranslation[];
   media: Record<string, StationMedia[]>;
+  feedback: TourFeedback[];
 };
 
 async function getTour(slug: string): Promise<TourData | null> {
@@ -54,8 +58,9 @@ async function getTour(slug: string): Promise<TourData | null> {
 
   const stationIds = (stations ?? []).map((s) => s.id);
 
-  // Übersetzungen und Medien sind optional (Migration 003/004) – still ignorieren.
-  const [tt, st, md] = await Promise.all([
+  // Übersetzungen, Medien und Feedback sind optional (Migration 003/004/005) –
+  // still ignorieren, falls die Migration noch nicht ausgeführt wurde.
+  const [tt, st, md, fb] = await Promise.all([
     supabase.from("tour_translations").select("*").eq("tour_id", tour.id),
     supabase
       .from("station_translations")
@@ -66,6 +71,11 @@ async function getTour(slug: string): Promise<TourData | null> {
       .select("*")
       .in("station_id", stationIds)
       .order("order_index", { ascending: true }),
+    supabase
+      .from("tour_feedback")
+      .select("*")
+      .eq("tour_id", tour.id)
+      .order("created_at", { ascending: false }),
   ]);
 
   const media: Record<string, StationMedia[]> = {};
@@ -75,12 +85,22 @@ async function getTour(slug: string): Promise<TourData | null> {
     }
   }
 
+  // Aufruf für die Studio-Statistik zählen – best effort, kein Blocker.
+  supabase
+    .from("tour_views")
+    .insert({ tour_id: tour.id })
+    .then(
+      () => {},
+      () => {},
+    );
+
   return {
     tour,
     stations: stations ?? [],
     tourTranslations: tt.error ? [] : (tt.data ?? []),
     stationTranslations: st.error ? [] : (st.data ?? []),
     media,
+    feedback: fb.error ? [] : (fb.data ?? []),
   };
 }
 
@@ -89,10 +109,11 @@ export default async function TourDetailPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ lang?: string }>;
+  searchParams: Promise<{ lang?: string; feedback?: string; error?: string }>;
 }) {
   const { slug } = await params;
-  const { lang } = await searchParams;
+  const { lang, feedback: justSubmitted, error: feedbackError } =
+    await searchParams;
 
   if (!isSupabaseConfigured) notFound();
 
@@ -265,6 +286,14 @@ export default async function TourDetailPage({
       <div className="mt-10">
         <TourPlayer tourId={tour.id} stations={stations} media={result.media} />
       </div>
+
+      <TourFeedbackSection
+        action={submitFeedback.bind(null, result.tour.id, slug)}
+        feedback={result.feedback}
+        justSubmitted={justSubmitted === "1"}
+        error={feedbackError}
+        lang={activeLocale !== BASE_LOCALE ? activeLocale : undefined}
+      />
     </article>
   );
 }

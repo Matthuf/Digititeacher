@@ -360,3 +360,11 @@ export async function deleteStation(tourId: string, stationId: string) {
   revalidatePath(`/studio/tours/${tourId}`);
   redirect(`/studio/tours/${tourId}`);
 }
+
+export async function deleteFeedback(tourId: string, feedbackId: string) {
+  const supabase = await createClient();
+  await supabase.from("tour_feedback").delete().eq("id", feedbackId);
+
+  revalidatePath(`/studio/tours/${tourId}`);
+  redirect(`/studio/tours/${tourId}`);
+}
