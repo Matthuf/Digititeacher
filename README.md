@@ -11,7 +11,9 @@ und `TODO.md` für die laufende Roadmap.
 - Next.js (App Router) + TypeScript + Tailwind CSS
 - shadcn/ui-Komponenten (`src/components/ui`), Framer Motion, lucide-react
 - Supabase (Postgres, Auth, Storage) — Client-Setup in `src/lib/supabase`
-- Leaflet/OpenStreetMap für Karten (`src/components/tour-map.tsx`)
+- Leaflet für Karten (`src/components/tour-map.tsx`); Kartenkacheln optional über
+  Thunderforest (alpiner Stil, sonst Standard-OSM), Fussweg-Routing optional über
+  OpenRouteService (sonst Luftlinie) – siehe `src/lib/map-tiles.ts` / `src/lib/routing`
 - DeepL + ElevenLabs für die KI-gestützte Übersetzungs-/Vertonungs-Pipeline im Studio
 - Stripe (REST-API, kein SDK) für den Einzelkauf kostenpflichtiger Touren
 - PWA (Manifest, Service Worker) mit Offline-Speicherung pro Tour über die Cache API

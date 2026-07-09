@@ -160,10 +160,18 @@ export function TourPlayer({
     Record<string, "correct" | "wrong">
   >({});
   const [showOverview, setShowOverview] = useState(false);
+  const [routeCoords, setRouteCoords] = useState<[number, number][] | null>(
+    null,
+  );
 
   const audioRefs = useRef(new Map<string, HTMLAudioElement>());
   const triggeredRef = useRef(new Set<string>());
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  const routeAnchorRef = useRef<{
+    stationId: string;
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   const storageKey = `dt-heard-${tourId}`;
   const quizStorageKey = `dt-quiz-${tourId}`;
@@ -377,6 +385,57 @@ export function TourPlayer({
   const activeStationImage = activeStation
     ? (media[activeStation.id] ?? []).find((m) => m.media_type === "image")
     : undefined;
+
+  // Echte Fussweg-Route zur nächsten Station holen (OpenRouteService, falls
+  // konfiguriert) – nur bei Stationswechsel oder deutlicher Bewegung neu
+  // abfragen, nicht bei jedem GPS-Tick.
+  useEffect(() => {
+    if (!position || !nextStation) {
+      const timer = setTimeout(() => {
+        setRouteCoords(null);
+        routeAnchorRef.current = null;
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+
+    const anchor = routeAnchorRef.current;
+    const moved =
+      !anchor ||
+      anchor.stationId !== nextStation.id ||
+      distanceMeters(anchor, {
+        latitude: position.latitude,
+        longitude: position.longitude,
+      }) > 25;
+
+    if (!moved) return;
+
+    routeAnchorRef.current = {
+      stationId: nextStation.id,
+      latitude: position.latitude,
+      longitude: position.longitude,
+    };
+
+    let cancelled = false;
+    const params = new URLSearchParams({
+      fromLat: String(position.latitude),
+      fromLng: String(position.longitude),
+      toLat: String(nextStation.latitude),
+      toLng: String(nextStation.longitude),
+    });
+
+    fetch(`/api/route?${params}`)
+      .then((res) => res.json())
+      .then((data: { route?: [number, number][] | null }) => {
+        if (!cancelled) setRouteCoords(data.route ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setRouteCoords(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [position, nextStation]);
 
   // MediaSession: Sperrbildschirm-/Benachrichtigungs-Steuerung, falls vom Browser unterstützt.
   useEffect(() => {
@@ -689,6 +748,7 @@ export function TourPlayer({
                   ? { latitude: nextStation.latitude, longitude: nextStation.longitude }
                   : null
               }
+              routeCoords={routeCoords}
               className="h-72 w-full sm:h-96"
             />
           </div>
@@ -765,6 +825,7 @@ export function TourPlayer({
                   ? { latitude: nextStation.latitude, longitude: nextStation.longitude }
                   : null
               }
+              routeCoords={routeCoords}
               className="h-64 w-full"
             />
           </div>

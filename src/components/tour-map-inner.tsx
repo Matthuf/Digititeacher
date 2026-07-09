@@ -10,6 +10,7 @@ import {
   Popup,
   TileLayer,
 } from "react-leaflet";
+import { TILE_LAYER } from "@/lib/map-tiles";
 
 export type StationPin = {
   id: string;
@@ -34,13 +35,16 @@ export function TourMap({
   activeStationId,
   userPosition,
   routeTarget,
+  routeCoords,
 }: {
   stations: StationPin[];
   className?: string;
   activeStationId?: string | null;
   userPosition?: { latitude: number; longitude: number } | null;
-  /** Zeichnet eine Linie von userPosition zu diesem Punkt (z. B. die nächste Station). */
+  /** Zeichnet eine Luftlinie von userPosition zu diesem Punkt, falls keine echte Route vorliegt. */
   routeTarget?: { latitude: number; longitude: number } | null;
+  /** Echte Fussweg-Route (OpenRouteService) als [lat, lng]-Punkte; hat Vorrang vor routeTarget. */
+  routeCoords?: [number, number][] | null;
 }) {
   if (stations.length === 0) {
     return null;
@@ -51,6 +55,16 @@ export function TourMap({
     stations[0].longitude,
   ];
 
+  const routePositions: [number, number][] | null =
+    routeCoords && routeCoords.length > 1
+      ? routeCoords
+      : userPosition && routeTarget
+        ? [
+            [userPosition.latitude, userPosition.longitude],
+            [routeTarget.latitude, routeTarget.longitude],
+          ]
+        : null;
+
   return (
     <MapContainer
       center={center}
@@ -58,10 +72,7 @@ export function TourMap({
       scrollWheelZoom={false}
       className={className ?? "h-96 w-full"}
     >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+      <TileLayer attribution={TILE_LAYER.attribution} url={TILE_LAYER.url} />
       {stations.map((station, index) => (
         <Marker
           key={`${station.id}-${station.id === activeStationId ? "active" : "idle"}`}
@@ -71,17 +82,14 @@ export function TourMap({
           <Popup>{station.title}</Popup>
         </Marker>
       ))}
-      {userPosition && routeTarget && (
+      {routePositions && (
         <Polyline
-          positions={[
-            [userPosition.latitude, userPosition.longitude],
-            [routeTarget.latitude, routeTarget.longitude],
-          ]}
+          positions={routePositions}
           pathOptions={{
             color: "#b6672a",
             weight: 4,
             opacity: 0.85,
-            dashArray: "1 10",
+            dashArray: routeCoords && routeCoords.length > 1 ? undefined : "1 10",
             lineCap: "round",
           }}
         />

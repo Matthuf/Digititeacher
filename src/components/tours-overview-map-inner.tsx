@@ -5,6 +5,7 @@ import L from "leaflet";
 import Link from "next/link";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import { GENRES, isGenre } from "@/lib/genres";
+import { TILE_LAYER } from "@/lib/map-tiles";
 
 export type TourPin = {
   id: string;
@@ -44,10 +45,7 @@ export function ToursOverviewMap({
       scrollWheelZoom={false}
       className={className ?? "h-96 w-full"}
     >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+      <TileLayer attribution={TILE_LAYER.attribution} url={TILE_LAYER.url} />
       {tours.map((tour) => (
         <Marker
           key={tour.id}
