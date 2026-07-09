@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Clock, MapPin, Mountain } from "lucide-react";
@@ -325,13 +324,11 @@ export default async function TourDetailPage({
       {tour.cover_image_url && (
         <Reveal delay={0.22}>
           <div className="relative mt-8 aspect-[5/2] overflow-hidden rounded-2xl border">
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={tour.cover_image_url}
               alt={`Cover von ${tour.title}`}
-              fill
-              priority
-              sizes="(min-width: 768px) 768px, 100vw"
-              className="object-cover"
+              className="absolute inset-0 size-full object-cover"
             />
           </div>
         </Reveal>

@@ -2,7 +2,14 @@
 
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { CircleMarker, MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import {
+  CircleMarker,
+  MapContainer,
+  Marker,
+  Polyline,
+  Popup,
+  TileLayer,
+} from "react-leaflet";
 
 export type StationPin = {
   id: string;
@@ -26,11 +33,14 @@ export function TourMap({
   className,
   activeStationId,
   userPosition,
+  routeTarget,
 }: {
   stations: StationPin[];
   className?: string;
   activeStationId?: string | null;
   userPosition?: { latitude: number; longitude: number } | null;
+  /** Zeichnet eine Linie von userPosition zu diesem Punkt (z. B. die nächste Station). */
+  routeTarget?: { latitude: number; longitude: number } | null;
 }) {
   if (stations.length === 0) {
     return null;
@@ -61,6 +71,21 @@ export function TourMap({
           <Popup>{station.title}</Popup>
         </Marker>
       ))}
+      {userPosition && routeTarget && (
+        <Polyline
+          positions={[
+            [userPosition.latitude, userPosition.longitude],
+            [routeTarget.latitude, routeTarget.longitude],
+          ]}
+          pathOptions={{
+            color: "#b6672a",
+            weight: 4,
+            opacity: 0.85,
+            dashArray: "1 10",
+            lineCap: "round",
+          }}
+        />
+      )}
       {userPosition && (
         <CircleMarker
           center={[userPosition.latitude, userPosition.longitude]}

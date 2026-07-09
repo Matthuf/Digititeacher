@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { StationMedia } from "@/lib/tours";
 
@@ -46,12 +45,12 @@ export function MediaCarousel({ media }: { media: StationMedia[] }) {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src={m.url}
                 alt={m.caption ?? "Stationsbild"}
-                fill
-                sizes="(min-width: 768px) 768px, 100vw"
-                className="object-cover"
+                loading="lazy"
+                className="absolute inset-0 size-full object-cover"
               />
             )}
             {m.caption && (

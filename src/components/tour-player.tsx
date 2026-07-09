@@ -374,6 +374,9 @@ export function TourPlayer({
   const nextStationImage = nextStation
     ? (media[nextStation.id] ?? []).find((m) => m.media_type === "image")
     : undefined;
+  const activeStationImage = activeStation
+    ? (media[activeStation.id] ?? []).find((m) => m.media_type === "image")
+    : undefined;
 
   // MediaSession: Sperrbildschirm-/Benachrichtigungs-Steuerung, falls vom Browser unterstützt.
   useEffect(() => {
@@ -475,6 +478,15 @@ export function TourPlayer({
             <p className="mt-2 text-center text-sm leading-relaxed text-muted-foreground">
               {activeStation.description}
             </p>
+          )}
+
+          {activeStationImage && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={activeStationImage.url}
+              alt={activeStationImage.caption ?? activeStation.title}
+              className="mx-auto mt-4 aspect-[4/3] w-full max-w-sm rounded-xl object-cover"
+            />
           )}
 
           {activeStation.audio_url ? (
@@ -658,7 +670,7 @@ export function TourPlayer({
               {geoError}
             </p>
           )}
-          <div className="h-40 overflow-hidden rounded-2xl border">
+          <div className="h-72 overflow-hidden rounded-2xl border sm:h-96">
             <TourMap
               stations={stations.map((s) => ({
                 id: s.id,
@@ -672,7 +684,12 @@ export function TourPlayer({
                   ? { latitude: position.latitude, longitude: position.longitude }
                   : null
               }
-              className="h-40 w-full"
+              routeTarget={
+                nextStation
+                  ? { latitude: nextStation.latitude, longitude: nextStation.longitude }
+                  : null
+              }
+              className="h-72 w-full sm:h-96"
             />
           </div>
         </div>
@@ -729,7 +746,7 @@ export function TourPlayer({
             </button>
           </div>
 
-          <div className="mt-4 h-40 shrink-0 overflow-hidden rounded-2xl border">
+          <div className="mt-4 h-64 shrink-0 overflow-hidden rounded-2xl border">
             <TourMap
               stations={stations.map((s) => ({
                 id: s.id,
@@ -743,7 +760,12 @@ export function TourPlayer({
                   ? { latitude: position.latitude, longitude: position.longitude }
                   : null
               }
-              className="h-40 w-full"
+              routeTarget={
+                nextStation
+                  ? { latitude: nextStation.latitude, longitude: nextStation.longitude }
+                  : null
+              }
+              className="h-64 w-full"
             />
           </div>
 
