@@ -13,6 +13,8 @@ und `TODO.md` für die laufende Roadmap.
 - Supabase (Postgres, Auth, Storage) — Client-Setup in `src/lib/supabase`
 - Leaflet/OpenStreetMap für Karten (`src/components/tour-map.tsx`)
 - DeepL + ElevenLabs für die KI-gestützte Übersetzungs-/Vertonungs-Pipeline im Studio
+- Stripe (REST-API, kein SDK) für den Einzelkauf kostenpflichtiger Touren
+- PWA (Manifest, Service Worker) mit Offline-Speicherung pro Tour über die Cache API
 
 ## Lokale Entwicklung
 
@@ -40,5 +42,6 @@ in `supabase/migrations/` (der Reihe nach im Supabase SQL Editor ausführen).
 
 ## Status
 
-Siehe `TODO.md` für den aktuellen Stand und die offene Roadmap (Offline/PWA,
-Payment, Quiz/Gamification, Katalog-Filter u. a.).
+MVP + Phase-2-Funktionen (Katalog-Filter, Bewertungen/Statistik, Quiz für
+Kinder-/Schul-Touren, Offline/PWA, Stripe-Einzelkauf) sind umgesetzt. Siehe
+`TODO.md` für den einzigen offenen Punkt (finale ElevenLabs-Stimmnamen).
