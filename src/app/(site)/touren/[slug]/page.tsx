@@ -22,12 +22,14 @@ import {
   type Locale,
 } from "@/lib/locales";
 import { GENRES, isGenre } from "@/lib/genres";
+import { retrieveCheckoutSession, stripeConfigured } from "@/lib/payments/stripe";
 import { TourPlayer } from "@/components/tour-player";
 import { TourFeedbackSection } from "@/components/tour-feedback";
 import { OfflineDownloadButton } from "@/components/offline-download-button";
+import { PurchaseGate } from "@/components/purchase-gate";
 import { Reveal } from "@/components/reveal";
 import { T } from "@/components/i18n/t";
-import { submitFeedback } from "./actions";
+import { startCheckout, submitFeedback } from "./actions";
 
 type TourData = {
   tour: Tour;
@@ -119,11 +121,22 @@ export default async function TourDetailPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ lang?: string; feedback?: string; error?: string }>;
+  searchParams: Promise<{
+    lang?: string;
+    feedback?: string;
+    error?: string;
+    checkout?: string;
+    session_id?: string;
+  }>;
 }) {
   const { slug } = await params;
-  const { lang, feedback: justSubmitted, error: feedbackError } =
-    await searchParams;
+  const {
+    lang,
+    feedback: justSubmitted,
+    error: feedbackError,
+    checkout,
+    session_id: checkoutSessionId,
+  } = await searchParams;
 
   if (!isSupabaseConfigured) notFound();
 
@@ -187,6 +200,19 @@ export default async function TourDetailPage({
         );
 
   const genre = isGenre(tour.genre) ? GENRES[tour.genre] : null;
+
+  // Nach erfolgreichem Stripe-Checkout die Session serverseitig verifizieren,
+  // bevor der Kauf im Browser als "freigeschaltet" markiert wird.
+  let justPurchased = false;
+  if (checkout === "success" && checkoutSessionId && stripeConfigured()) {
+    const session = await retrieveCheckoutSession(checkoutSessionId);
+    justPurchased =
+      session?.payment_status === "paid" &&
+      session.metadata?.tour_id === tour.id;
+  }
+
+  const isPaid = !!tour.price && tour.price > 0 && stripeConfigured();
+  const checkoutAction = startCheckout.bind(null, tour.id, slug);
 
   // Dateien für den Offline-Download: Cover, Audios und Stationsbilder.
   // Videos und Kartenkacheln bleiben aussen vor (Grösse/CORS).
@@ -312,13 +338,30 @@ export default async function TourDetailPage({
       )}
 
       <div className="mt-10">
-        <TourPlayer
-          tourId={tour.id}
-          stations={stations}
-          media={result.media}
-          quiz={result.quiz}
-          genre={tour.genre}
-        />
+        {isPaid ? (
+          <PurchaseGate
+            tourId={tour.id}
+            price={tour.price!}
+            justPurchased={justPurchased}
+            checkoutAction={checkoutAction}
+          >
+            <TourPlayer
+              tourId={tour.id}
+              stations={stations}
+              media={result.media}
+              quiz={result.quiz}
+              genre={tour.genre}
+            />
+          </PurchaseGate>
+        ) : (
+          <TourPlayer
+            tourId={tour.id}
+            stations={stations}
+            media={result.media}
+            quiz={result.quiz}
+            genre={tour.genre}
+          />
+        )}
       </div>
 
       <TourFeedbackSection

@@ -38,9 +38,15 @@ export default async function NewTourPage({
                 <Input id="duration_minutes" name="duration_minutes" type="number" />
               </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="difficulty">Schwierigkeit</Label>
-              <Input id="difficulty" name="difficulty" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="difficulty">Schwierigkeit</Label>
+                <Input id="difficulty" name="difficulty" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="price">Preis (CHF, leer = kostenlos)</Label>
+                <Input id="price" name="price" type="number" step="0.05" min="0" />
+              </div>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="genre">Erlebnis-Genre</Label>

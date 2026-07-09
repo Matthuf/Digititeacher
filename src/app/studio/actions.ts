@@ -53,6 +53,7 @@ export async function createTour(formData: FormData) {
       difficulty: String(formData.get("difficulty") ?? "") || null,
       genre: genreFromForm(formData),
       description: String(formData.get("description") ?? "") || null,
+      price: formData.get("price") ? Number(formData.get("price")) : null,
       status: "draft",
     })
     .select("id")
@@ -80,6 +81,7 @@ export async function updateTour(tourId: string, formData: FormData) {
       genre: genreFromForm(formData),
       description: String(formData.get("description") ?? "") || null,
       cover_image_url: String(formData.get("cover_image_url") ?? "") || null,
+      price: formData.get("price") ? Number(formData.get("price")) : null,
       status: formData.get("status") === "published" ? "published" : "draft",
       updated_at: new Date().toISOString(),
     })

@@ -20,6 +20,7 @@ import {
 } from "@/app/studio/actions";
 import { GENRE_KEYS, GENRES } from "@/lib/genres";
 import { aiStatus } from "@/lib/ai/status";
+import { stripeConfigured } from "@/lib/payments/stripe";
 import { MediaUpload } from "@/components/media-upload";
 import { CoverUpload } from "@/components/cover-upload";
 import { StationFields } from "./station-fields";
@@ -196,13 +197,32 @@ export default async function EditTourPage({
                 />
               </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="difficulty">Schwierigkeit</Label>
-              <Input
-                id="difficulty"
-                name="difficulty"
-                defaultValue={tour.difficulty ?? ""}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="difficulty">Schwierigkeit</Label>
+                <Input
+                  id="difficulty"
+                  name="difficulty"
+                  defaultValue={tour.difficulty ?? ""}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="price">Preis (CHF, leer = kostenlos)</Label>
+                <Input
+                  id="price"
+                  name="price"
+                  type="number"
+                  step="0.05"
+                  min="0"
+                  defaultValue={tour.price ?? ""}
+                />
+                {!stripeConfigured() && (
+                  <p className="text-xs text-muted-foreground">
+                    Stripe ist noch nicht konfiguriert (STRIPE_SECRET_KEY) –
+                    die Tour bleibt bis dahin frei zugänglich.
+                  </p>
+                )}
+              </div>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="genre">Erlebnis-Genre</Label>

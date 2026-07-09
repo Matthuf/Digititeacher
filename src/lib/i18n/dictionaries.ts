@@ -82,6 +82,8 @@ export const dictionaries: Record<UiLocale, Dict> = {
     "offline.done": "Offline verfügbar",
     "offline.remove": "Entfernen",
     "offline.error": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
+    "purchase.locked": "Diese Tour ist kostenpflichtig. Nach dem Kauf ist der Audioguide sofort freigeschaltet.",
+    "purchase.buy": "Jetzt kaufen",
   },
   en: {
     "nav.tours": "Tours",
@@ -151,5 +153,7 @@ export const dictionaries: Record<UiLocale, Dict> = {
     "offline.done": "Available offline",
     "offline.remove": "Remove",
     "offline.error": "Couldn't save. Please try again.",
+    "purchase.locked": "This tour requires a one-time purchase. The audio guide unlocks immediately after checkout.",
+    "purchase.buy": "Buy now",
   },
 };
