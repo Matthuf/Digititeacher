@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ArrowRight,
+  ArrowLeft,
   Check,
   FileText,
+  Flag,
+  Footprints,
   HelpCircle,
   MapPin,
-  Navigation,
   Pause,
   Play,
   RotateCcw,
@@ -24,6 +25,42 @@ import { cn } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/language-context";
 
 const QUIZ_GENRES = new Set(["kinder", "schule"]);
+const DEFAULT_TRIGGER_RADIUS_METERS = 40;
+
+function formatDistance(meters: number) {
+  if (meters >= 1000) {
+    return `${(meters / 1000).toFixed(1).replace(".", ",")} km`;
+  }
+  return `${Math.round(meters)} m`;
+}
+
+/** Kurzer Ankunfts-Ton (zwei Töne), synthetisiert per Web Audio API – kein Audio-Asset nötig. */
+function playArrivalChime() {
+  try {
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+    [660, 880].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, now + i * 0.16);
+      gain.gain.linearRampToValueAtTime(0.16, now + i * 0.16 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.16 + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + i * 0.16);
+      osc.stop(now + i * 0.16 + 0.4);
+    });
+    setTimeout(() => ctx.close(), 900);
+  } catch {
+    // Web Audio nicht verfügbar – kein Blocker.
+  }
+}
 
 function StationQuizBlock({
   quiz,
@@ -45,7 +82,7 @@ function StationQuizBlock({
   }
 
   return (
-    <div className="mt-4 rounded-xl border border-dashed border-primary/40 bg-primary/[0.03] p-4">
+    <div className="mt-4 rounded-xl border border-primary/25 bg-primary/[0.04] p-4">
       <p className="flex items-start gap-1.5 text-sm font-medium">
         <HelpCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
         {quiz.question}
@@ -61,9 +98,9 @@ function StationQuizBlock({
               disabled={revealed}
               onClick={() => choose(i)}
               className={cn(
-                "rounded-lg border px-3 py-2 text-left text-sm transition-colors",
+                "min-h-11 rounded-lg border px-3 py-2 text-left text-sm transition-colors",
                 !revealed && "hover:border-primary/60",
-                revealed && isCorrect && "border-mist bg-mist/10 text-foreground",
+                revealed && isCorrect && "border-secondary bg-secondary/10",
                 revealed &&
                   isSelected &&
                   !isCorrect &&
@@ -79,7 +116,7 @@ function StationQuizBlock({
         <p
           className={cn(
             "mt-2 text-sm font-medium",
-            answer === "correct" ? "text-mist" : "text-destructive",
+            answer === "correct" ? "text-secondary" : "text-destructive",
           )}
         >
           {answer === "correct" ? t("quiz.correct") : t("quiz.wrong")}
@@ -89,34 +126,29 @@ function StationQuizBlock({
   );
 }
 
-const DEFAULT_TRIGGER_RADIUS_METERS = 40;
-
-function formatDistance(meters: number) {
-  if (meters >= 1000) {
-    return `${(meters / 1000).toFixed(1).replace(".", ",")} km`;
-  }
-  return `${Math.round(meters)} m`;
-}
-
 export function TourPlayer({
   tourId,
+  tourTitle,
+  coverImageUrl,
   stations,
   media = {},
   quiz = {},
   genre,
 }: {
   tourId: string;
+  tourTitle?: string;
+  coverImageUrl?: string | null;
   stations: Station[];
   media?: Record<string, StationMedia[]>;
   quiz?: Record<string, StationQuiz>;
   genre?: string | null;
 }) {
   const { t } = useLanguage();
+  const [hasStarted, setHasStarted] = useState(false);
   const [position, setPosition] = useState<GeolocationCoordinates | null>(
     null,
   );
   const [geoError, setGeoError] = useState<string | null>(null);
-  const [autoPlay, setAutoPlay] = useState(false);
   const [activeStationId, setActiveStationId] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState<{
@@ -127,8 +159,9 @@ export function TourPlayer({
   const [quizAnswers, setQuizAnswers] = useState<
     Record<string, "correct" | "wrong">
   >({});
+  const [showOverview, setShowOverview] = useState(false);
+
   const audioRefs = useRef(new Map<string, HTMLAudioElement>());
-  const stationRefs = useRef(new Map<string, HTMLLIElement>());
   const triggeredRef = useRef(new Set<string>());
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
@@ -189,29 +222,60 @@ export function TourPlayer({
     [storageKey],
   );
 
-  const playStation = useCallback((id: string) => {
-    for (const [otherId, audio] of audioRefs.current) {
-      if (otherId !== id) audio.pause();
-    }
-    const audio = audioRefs.current.get(id);
-    if (audio) {
+  const openStation = useCallback(
+    (id: string, { chime = false }: { chime?: boolean } = {}) => {
+      for (const [otherId, audio] of audioRefs.current) {
+        if (otherId !== id) audio.pause();
+      }
+      setShowOverview(false);
       setProgress(null);
-      audio.play();
       setActiveStationId(id);
-    }
-  }, []);
+      if (chime) playArrivalChime();
+      const audio = audioRefs.current.get(id);
+      if (audio) audio.play();
+    },
+    [],
+  );
 
-  function enableAutoPlay() {
+  const closeStation = useCallback(() => {
+    if (activeStationId) audioRefs.current.get(activeStationId)?.pause();
+    setActiveStationId(null);
+    setIsPlaying(false);
+    setProgress(null);
+  }, [activeStationId]);
+
+  const togglePlayback = useCallback(() => {
+    if (!activeStationId) return;
+    const audio = audioRefs.current.get(activeStationId);
+    if (!audio) return;
+    if (audio.paused) audio.play();
+    else audio.pause();
+  }, [activeStationId]);
+
+  const skip = useCallback(
+    (seconds: number) => {
+      if (!activeStationId) return;
+      const audio = audioRefs.current.get(activeStationId);
+      if (!audio) return;
+      audio.currentTime = Math.max(
+        0,
+        Math.min(audio.currentTime + seconds, audio.duration || Infinity),
+      );
+    },
+    [activeStationId],
+  );
+
+  function startTour() {
     if (!("geolocation" in navigator)) {
       setGeoError("Geolocation wird von diesem Browser nicht unterstützt.");
       return;
     }
     setGeoError(null);
-    setAutoPlay(true);
+    setHasStarted(true);
   }
 
   useEffect(() => {
-    if (!autoPlay) return;
+    if (!hasStarted) return;
 
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
@@ -223,11 +287,12 @@ export function TourPlayer({
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [autoPlay]);
+  }, [hasStarted]);
 
   useEffect(() => {
-    if (!autoPlay || !position) return;
+    if (!hasStarted || !position || activeStationId) return;
 
+    let arrived: string | null = null;
     for (const station of stations) {
       if (triggeredRef.current.has(station.id)) continue;
 
@@ -239,15 +304,19 @@ export function TourPlayer({
 
       if (distance <= radius) {
         triggeredRef.current.add(station.id);
-        playStation(station.id);
+        arrived = station.id;
         break;
       }
     }
-  }, [position, autoPlay, stations, playStation]);
+    if (!arrived) return;
+
+    const timer = setTimeout(() => openStation(arrived!, { chime: true }), 0);
+    return () => clearTimeout(timer);
+  }, [position, hasStarted, activeStationId, stations, openStation]);
 
   // Bildschirm während aktiver Tour wach halten (progressive enhancement).
   useEffect(() => {
-    const active = autoPlay || isPlaying;
+    const active = hasStarted || isPlaying;
 
     async function acquire() {
       try {
@@ -278,52 +347,17 @@ export function TourPlayer({
 
     wakeLockRef.current?.release().catch(() => {});
     wakeLockRef.current = null;
-  }, [autoPlay, isPlaying]);
-
-  function toggleStation(id: string) {
-    const audio = audioRefs.current.get(id);
-    if (!audio) return;
-    if (activeStationId === id && !audio.paused) {
-      audio.pause();
-    } else {
-      playStation(id);
-    }
-  }
-
-  function skip(id: string, seconds: number) {
-    const audio = audioRefs.current.get(id);
-    if (!audio) return;
-    audio.currentTime = Math.max(
-      0,
-      Math.min(audio.currentTime + seconds, audio.duration || Infinity),
-    );
-  }
-
-  function scrollToStation(id: string) {
-    stationRefs.current.get(id)?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-  }
-
-  function markArrived(id: string) {
-    triggeredRef.current.add(id);
-    playStation(id);
-    scrollToStation(id);
-  }
+  }, [hasStarted, isPlaying]);
 
   const heardCount = stations.filter((s) => heard.has(s.id)).length;
+  const activeStation = activeStationId
+    ? (stations.find((s) => s.id === activeStationId) ?? null)
+    : null;
+  const allHeard = stations.length > 0 && heardCount === stations.length;
   const quizStationIds = stations.filter((s) => quiz[s.id]).map((s) => s.id);
   const quizPoints = quizStationIds.filter(
     (id) => quizAnswers[id] === "correct",
   ).length;
-
-  const activeStation = activeStationId
-    ? stations.find((s) => s.id === activeStationId) ?? null
-    : null;
-  const chapterNumber = activeStationId
-    ? stations.findIndex((s) => s.id === activeStationId) + 1
-    : Math.min(heardCount + 1, stations.length);
 
   const activeIndex = activeStationId
     ? stations.findIndex((s) => s.id === activeStationId)
@@ -341,432 +375,432 @@ export function TourPlayer({
     ? (media[nextStation.id] ?? []).find((m) => m.media_type === "image")
     : undefined;
 
-  return (
-    <div className={cn("flex flex-col gap-8", activeStationId && "pb-24")}>
-      {/* GPS-Autoplay */}
-      <div>
-        <div className="flex flex-col gap-4 rounded-2xl bg-secondary p-5 text-secondary-foreground sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-4">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <Navigation aria-hidden="true" className="size-5" />
-            </span>
-            <div>
-              <p className="flex items-center gap-2 font-medium">
-                {t("player.autoplay.title")}
-                {autoPlay && (
-                  <span
-                    aria-hidden="true"
-                    className="size-2 animate-pulse rounded-full bg-primary"
-                  />
-                )}
-              </p>
-              <p className="mt-0.5 text-sm opacity-80">
-                {t("player.autoplay.text")}
-              </p>
-            </div>
-          </div>
-          <Button
-            type="button"
-            onClick={() => (autoPlay ? setAutoPlay(false) : enableAutoPlay())}
-            className={cn(
-              "shrink-0 rounded-full",
-              autoPlay &&
-                "border border-primary/50 bg-primary/15 text-secondary-foreground hover:bg-primary/25",
-            )}
-          >
-            {autoPlay ? t("player.autoplay.on") : t("player.autoplay.off")}
-          </Button>
-        </div>
-        {geoError && (
-          <p className="mt-2 text-sm text-destructive" role="alert">
-            {geoError}
-          </p>
-        )}
-      </div>
+  // MediaSession: Sperrbildschirm-/Benachrichtigungs-Steuerung, falls vom Browser unterstützt.
+  useEffect(() => {
+    if (!activeStation || !("mediaSession" in navigator)) return;
 
-      {/* Nächste Station: Vorschau + manueller Fallback */}
-      {autoPlay && nextStation && (
-        <div className="flex items-center gap-4 rounded-2xl border border-dashed border-primary/40 bg-primary/[0.03] p-4">
-          {nextStationImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={nextStationImage.url}
-              alt=""
-              className="size-14 shrink-0 rounded-xl object-cover"
-            />
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: activeStation.title,
+      artist: tourTitle ?? "SendaLore",
+      artwork: coverImageUrl
+        ? [{ src: coverImageUrl, sizes: "512x512", type: "image/jpeg" }]
+        : [],
+    });
+    navigator.mediaSession.setActionHandler("play", togglePlayback);
+    navigator.mediaSession.setActionHandler("pause", togglePlayback);
+    navigator.mediaSession.setActionHandler("seekbackward", () => skip(-15));
+    navigator.mediaSession.setActionHandler("seekforward", () => skip(15));
+
+    return () => {
+      navigator.mediaSession.setActionHandler("play", null);
+      navigator.mediaSession.setActionHandler("pause", null);
+      navigator.mediaSession.setActionHandler("seekbackward", null);
+      navigator.mediaSession.setActionHandler("seekforward", null);
+    };
+  }, [activeStation, tourTitle, coverImageUrl, togglePlayback, skip]);
+
+  const chapterOf = (id: string) => stations.findIndex((s) => s.id === id) + 1;
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Utility-Leiste: Fortschritt + Übersicht, immer erreichbar */}
+      <div className="flex items-center justify-between text-sm">
+        <p className="text-muted-foreground">
+          {heardCount > 0 ? (
+            <>
+              <span className="font-medium text-foreground">{heardCount}</span>{" "}
+              {t("player.of")} {stations.length} {t("player.progress")}
+            </>
           ) : (
-            <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
-              <MapPin aria-hidden="true" className="size-5" />
+            <span>
+              {stations.length} {t("player.stationsTotal")}
             </span>
           )}
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium uppercase tracking-wide text-primary">
-              {t("player.nextStation")}
-            </p>
-            <p className="truncate text-sm font-semibold">{nextStation.title}</p>
-            <p className="text-xs text-muted-foreground">
-              {nextDistance !== null
-                ? formatDistance(nextDistance)
-                : t("player.locating")}
-            </p>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => markArrived(nextStation.id)}
-            className="shrink-0"
-          >
-            {t("player.imHere")}
-          </Button>
-        </div>
-      )}
-
-      {/* Karte */}
-      <div className="relative z-0 overflow-hidden rounded-2xl border">
-        <TourMap
-          stations={stations.map((s) => ({
-            id: s.id,
-            title: s.title,
-            latitude: s.latitude,
-            longitude: s.longitude,
-          }))}
-          activeStationId={activeStationId}
-          userPosition={
-            position
-              ? { latitude: position.latitude, longitude: position.longitude }
-              : null
-          }
-          className="h-72 w-full sm:h-96"
-        />
-      </div>
-
-      {/* Fortschritt */}
-      <div>
-        <div className="flex items-center justify-between text-sm">
-          <p className="text-muted-foreground">
-            <span className="font-medium text-foreground">
-              {t("player.chapter")} {chapterNumber}
-            </span>{" "}
-            {t("player.of")} {stations.length}
-          </p>
+        </p>
+        <div className="flex items-center gap-3">
           {showQuiz && quizStationIds.length > 0 && (
             <p className="flex items-center gap-1.5 font-medium text-primary">
               <Trophy aria-hidden="true" className="size-4" />
-              {quizPoints} / {quizStationIds.length} {t("quiz.points")}
+              {quizPoints}/{quizStationIds.length}
             </p>
           )}
+          <button
+            type="button"
+            onClick={() => setShowOverview(true)}
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            {t("player.overview")}
+          </button>
         </div>
-        {heardCount > 0 && (
-          <>
-            <div
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={stations.length}
-              aria-valuenow={heardCount}
-              className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"
-            >
-              <div
-                className="h-full rounded-full bg-mist transition-all duration-500"
-                style={{ width: `${(heardCount / stations.length) * 100}%` }}
-              />
-            </div>
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              {heardCount} {t("player.of")} {stations.length} {t("player.progress")}
-            </p>
-          </>
-        )}
       </div>
 
-      {/* Stationen */}
-      <ol className="flex flex-col gap-4">
-        {stations.map((station, index) => {
-          const distance = position
-            ? distanceMeters(
-                {
-                  latitude: position.latitude,
-                  longitude: position.longitude,
-                },
-                station,
-              )
-            : null;
-          const isActive = activeStationId === station.id;
-          const isHeard = heard.has(station.id);
+      {heardCount > 0 && (
+        <div
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={stations.length}
+          aria-valuenow={heardCount}
+          className="-mt-4 h-1.5 overflow-hidden rounded-full bg-muted"
+        >
+          <div
+            className="h-full rounded-full bg-secondary transition-all duration-500"
+            style={{ width: `${(heardCount / stations.length) * 100}%` }}
+          />
+        </div>
+      )}
 
-          return (
-            <li
-              key={station.id}
-              ref={(el) => {
-                if (el) stationRefs.current.set(station.id, el);
-                else stationRefs.current.delete(station.id);
-              }}
-            >
-              <div
-                className={cn(
-                  "rounded-2xl border bg-card p-5 transition-all duration-300",
-                  isActive &&
-                    "border-primary/60 bg-primary/[0.04] ring-1 ring-primary/40",
-                )}
-              >
-                <div className="flex items-start gap-4">
-                  <span
-                    className={cn(
-                      "flex size-9 shrink-0 items-center justify-center rounded-full font-serif text-sm font-semibold transition-colors",
-                      isActive
-                        ? "bg-primary text-primary-foreground"
-                        : isHeard
-                          ? "bg-mist/15 text-mist"
-                          : "bg-primary/12 text-primary",
-                    )}
-                  >
-                    {isHeard && !isActive ? (
-                      <Check aria-hidden="true" className="size-4" />
-                    ) : (
-                      index + 1
-                    )}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-3">
-                      <h2 className="flex items-center gap-2.5 font-serif text-lg font-semibold tracking-tight">
-                        {station.title}
-                        {isActive && isPlaying && (
-                          <span aria-hidden="true" className="dt-eq">
-                            <span />
-                            <span />
-                            <span />
-                          </span>
-                        )}
-                      </h2>
-                      {distance !== null && (
-                        <span className="flex shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground">
-                          <MapPin
-                            aria-hidden="true"
-                            className="size-3.5 text-primary"
-                          />
-                          {formatDistance(distance)}
-                        </span>
-                      )}
-                    </div>
-                    {station.description && (
-                      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                        {station.description}
-                      </p>
-                    )}
-
-                    {station.audio_url ? (
-                      <div className="mt-4 flex items-center gap-2">
-                        <Button
-                          type="button"
-                          size="icon"
-                          onClick={() => toggleStation(station.id)}
-                          aria-label={
-                            isActive && isPlaying
-                              ? `${station.title} pausieren`
-                              : `${station.title} abspielen`
-                          }
-                          className="size-11 shrink-0 rounded-full"
-                        >
-                          {isActive && isPlaying ? (
-                            <Pause aria-hidden="true" />
-                          ) : (
-                            <Play aria-hidden="true" className="ml-0.5" />
-                          )}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => skip(station.id, -15)}
-                          aria-label="15 Sekunden zurück"
-                          className="size-9 shrink-0 rounded-full text-muted-foreground"
-                        >
-                          <RotateCcw aria-hidden="true" className="size-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => skip(station.id, 15)}
-                          aria-label="15 Sekunden vor"
-                          className="size-9 shrink-0 rounded-full text-muted-foreground"
-                        >
-                          <RotateCw aria-hidden="true" className="size-4" />
-                        </Button>
-                        <audio
-                          ref={(el) => {
-                            if (el) audioRefs.current.set(station.id, el);
-                            else audioRefs.current.delete(station.id);
-                          }}
-                          className="h-10 w-full min-w-0"
-                          controls
-                          preload="none"
-                          src={station.audio_url}
-                          onPlay={() => {
-                            setActiveStationId(station.id);
-                            setIsPlaying(true);
-                          }}
-                          onPause={() =>
-                            setIsPlaying((current) =>
-                              activeStationId === station.id ? false : current,
-                            )
-                          }
-                          onTimeUpdate={(e) =>
-                            setProgress({
-                              currentTime: e.currentTarget.currentTime,
-                              duration: e.currentTarget.duration || 0,
-                            })
-                          }
-                          onEnded={() => {
-                            markHeard(station.id);
-                            setIsPlaying(false);
-                            setProgress(null);
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <p className="mt-3 text-sm italic text-muted-foreground/70">
-                        {t("player.noAudio")}
-                      </p>
-                    )}
-
-                    {station.transcript && (
-                      <details className="group mt-3">
-                        <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-mist hover:underline">
-                          <FileText aria-hidden="true" className="size-4" />
-                          <span className="group-open:hidden">
-                            {t("player.transcriptShow")}
-                          </span>
-                          <span className="hidden group-open:inline">
-                            {t("player.transcriptHide")}
-                          </span>
-                        </summary>
-                        <p className="mt-3 whitespace-pre-line rounded-lg bg-muted/60 p-4 text-sm leading-relaxed text-foreground/90">
-                          {station.transcript}
-                        </p>
-                      </details>
-                    )}
-
-                    <MediaCarousel media={media[station.id] ?? []} />
-
-                    {showQuiz && quiz[station.id] && (
-                      <StationQuizBlock
-                        quiz={quiz[station.id]}
-                        answer={quizAnswers[station.id]}
-                        onAnswer={(result) => answerQuiz(station.id, result)}
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-
-      {/* Persistenter Mini-Player */}
+      {/* Bühne: aktuell aktive Station */}
       {activeStation && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-secondary text-secondary-foreground shadow-lg">
-          {progress && progress.duration > 0 && (
-            <div className="h-1 w-full bg-white/15">
-              <div
-                className="h-full bg-primary transition-all duration-200"
-                style={{
-                  width: `${(progress.currentTime / progress.duration) * 100}%`,
-                }}
-              />
-            </div>
-          )}
-          <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="rounded-2xl border bg-card p-5">
+          <div className="flex items-center justify-between gap-3">
             <button
               type="button"
-              onClick={() => scrollToStation(activeStation.id)}
-              className="flex min-w-0 flex-1 items-center gap-3 text-left"
+              onClick={closeStation}
+              aria-label={t("player.back")}
+              className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
             >
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
-                {isPlaying ? (
-                  <span aria-hidden="true" className="dt-eq">
-                    <span />
-                    <span />
-                    <span />
-                  </span>
-                ) : (
-                  <MapPin aria-hidden="true" className="size-4" />
-                )}
-              </span>
-              <span className="min-w-0">
-                <span className="block text-xs opacity-70">
-                  {t("player.chapter")} {chapterNumber} {t("player.of")}{" "}
-                  {stations.length}
-                </span>
-                <span className="block truncate text-sm font-semibold">
-                  {activeStation.title}
-                </span>
-              </span>
+              <ArrowLeft aria-hidden="true" className="size-4" />
             </button>
-            <div className="flex shrink-0 items-center gap-1.5">
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                onClick={() => skip(activeStation.id, -15)}
-                aria-label="15 Sekunden zurück"
-                className="size-9 shrink-0 rounded-full text-secondary-foreground hover:bg-white/10"
-              >
-                <RotateCcw aria-hidden="true" className="size-4" />
-              </Button>
-              <Button
-                type="button"
-                size="icon"
-                onClick={() => toggleStation(activeStation.id)}
-                aria-label={isPlaying ? "Pausieren" : "Abspielen"}
-                className="size-11 shrink-0 rounded-full"
-              >
-                {isPlaying ? (
-                  <Pause aria-hidden="true" />
-                ) : (
-                  <Play aria-hidden="true" className="ml-0.5" />
-                )}
-              </Button>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                onClick={() => skip(activeStation.id, 15)}
-                aria-label="15 Sekunden vor"
-                className="size-9 shrink-0 rounded-full text-secondary-foreground hover:bg-white/10"
-              >
-                <RotateCw aria-hidden="true" className="size-4" />
-              </Button>
-              {nextStation && (
+            <p className="text-sm font-medium text-muted-foreground">
+              {t("player.chapter")} {chapterOf(activeStation.id)} {t("player.of")}{" "}
+              {stations.length}
+            </p>
+            <span className="size-9" aria-hidden="true" />
+          </div>
+
+          <h2 className="mt-3 text-center font-serif text-2xl font-semibold tracking-tight">
+            {activeStation.title}
+          </h2>
+          {activeStation.description && (
+            <p className="mt-2 text-center text-sm leading-relaxed text-muted-foreground">
+              {activeStation.description}
+            </p>
+          )}
+
+          {activeStation.audio_url ? (
+            <>
+              <div className="mt-6 flex items-center justify-center gap-4">
                 <Button
                   type="button"
                   size="icon"
                   variant="ghost"
-                  onClick={() => scrollToStation(nextStation.id)}
-                  aria-label={t("player.nextStation")}
-                  className="hidden size-9 shrink-0 rounded-full text-secondary-foreground hover:bg-white/10 sm:flex"
+                  onClick={() => skip(-15)}
+                  aria-label="15 Sekunden zurück"
+                  className="size-11 shrink-0 rounded-full text-muted-foreground"
                 >
-                  <ArrowRight aria-hidden="true" className="size-4" />
+                  <RotateCcw aria-hidden="true" className="size-5" />
                 </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  onClick={togglePlayback}
+                  aria-label={isPlaying ? "Pausieren" : "Abspielen"}
+                  className="size-16 shrink-0 rounded-full"
+                >
+                  {isPlaying ? (
+                    <Pause aria-hidden="true" className="size-6" />
+                  ) : (
+                    <Play aria-hidden="true" className="ml-0.5 size-6" />
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => skip(15)}
+                  aria-label="15 Sekunden vor"
+                  className="size-11 shrink-0 rounded-full text-muted-foreground"
+                >
+                  <RotateCw aria-hidden="true" className="size-5" />
+                </Button>
+              </div>
+              {progress && progress.duration > 0 && (
+                <div className="mx-auto mt-4 h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-200"
+                    style={{
+                      width: `${(progress.currentTime / progress.duration) * 100}%`,
+                    }}
+                  />
+                </div>
               )}
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                onClick={() => {
-                  audioRefs.current.get(activeStation.id)?.pause();
-                  setActiveStationId(null);
-                  setIsPlaying(false);
-                  setProgress(null);
+              <audio
+                ref={(el) => {
+                  if (el) audioRefs.current.set(activeStation.id, el);
+                  else audioRefs.current.delete(activeStation.id);
                 }}
-                aria-label="Player schliessen"
-                className="size-9 shrink-0 rounded-full text-secondary-foreground hover:bg-white/10"
-              >
-                <X aria-hidden="true" className="size-4" />
+                className="hidden"
+                preload="auto"
+                src={activeStation.audio_url}
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+                onTimeUpdate={(e) =>
+                  setProgress({
+                    currentTime: e.currentTarget.currentTime,
+                    duration: e.currentTarget.duration || 0,
+                  })
+                }
+                onEnded={() => {
+                  markHeard(activeStation.id);
+                  setIsPlaying(false);
+                }}
+              />
+            </>
+          ) : (
+            <p className="mt-4 text-center text-sm italic text-muted-foreground/70">
+              {t("player.noAudio")}
+            </p>
+          )}
+
+          {heard.has(activeStation.id) && (
+            <div className="mt-6 flex justify-center">
+              <Button type="button" variant="outline" onClick={closeStation}>
+                {nextStation ? t("player.continueNext") : t("player.backToOverview")}
               </Button>
             </div>
+          )}
+
+          {activeStation.transcript && (
+            <details className="group mt-6">
+              <summary className="flex cursor-pointer list-none items-center justify-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                <FileText aria-hidden="true" className="size-4" />
+                <span className="group-open:hidden">
+                  {t("player.transcriptShow")}
+                </span>
+                <span className="hidden group-open:inline">
+                  {t("player.transcriptHide")}
+                </span>
+              </summary>
+              <p className="mt-3 whitespace-pre-line rounded-lg bg-muted/60 p-4 text-sm leading-relaxed text-foreground/90">
+                {activeStation.transcript}
+              </p>
+            </details>
+          )}
+
+          <MediaCarousel media={media[activeStation.id] ?? []} />
+
+          {showQuiz && quiz[activeStation.id] && (
+            <StationQuizBlock
+              quiz={quiz[activeStation.id]}
+              answer={quizAnswers[activeStation.id]}
+              onAnswer={(result) => answerQuiz(activeStation.id, result)}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Start-Bildschirm */}
+      {!activeStation && !hasStarted && (
+        <div className="rounded-2xl bg-secondary p-6 text-center text-secondary-foreground">
+          <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <Footprints aria-hidden="true" className="size-6" />
+          </span>
+          <p className="mt-4 text-sm opacity-80">{t("player.intro.text")}</p>
+          <Button
+            type="button"
+            size="lg"
+            onClick={startTour}
+            className="mt-5 rounded-full px-8"
+          >
+            {t("player.intro.start")}
+          </Button>
+          {geoError && (
+            <p className="mt-3 text-sm text-destructive" role="alert">
+              {geoError}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Laufen: nächste Station im Blick */}
+      {!activeStation && hasStarted && !allHeard && (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-4 rounded-2xl border border-primary/25 bg-primary/[0.04] p-4">
+            {nextStationImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={nextStationImage.url}
+                alt=""
+                className="size-16 shrink-0 rounded-xl object-cover"
+              />
+            ) : (
+              <span className="flex size-16 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+                <MapPin aria-hidden="true" className="size-6" />
+              </span>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-primary">
+                {t("player.nextStation")}
+              </p>
+              <p className="truncate font-serif text-lg font-semibold">
+                {nextStation?.title}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {nextDistance !== null
+                  ? formatDistance(nextDistance)
+                  : t("player.locating")}
+              </p>
+            </div>
+            {nextStation && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => openStation(nextStation.id, { chime: true })}
+                className="shrink-0"
+              >
+                {t("player.imHere")}
+              </Button>
+            )}
+          </div>
+          {geoError && (
+            <p className="text-sm text-destructive" role="alert">
+              {geoError}
+            </p>
+          )}
+          <div className="h-40 overflow-hidden rounded-2xl border">
+            <TourMap
+              stations={stations.map((s) => ({
+                id: s.id,
+                title: s.title,
+                latitude: s.latitude,
+                longitude: s.longitude,
+              }))}
+              activeStationId={null}
+              userPosition={
+                position
+                  ? { latitude: position.latitude, longitude: position.longitude }
+                  : null
+              }
+              className="h-40 w-full"
+            />
           </div>
         </div>
+      )}
+
+      {/* Fertig */}
+      {!activeStation && allHeard && (
+        <div className="rounded-2xl bg-secondary p-6 text-center text-secondary-foreground">
+          <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <Flag aria-hidden="true" className="size-6" />
+          </span>
+          <p className="mt-4 font-serif text-xl font-semibold">
+            {t("player.finished.title")}
+          </p>
+          <p className="mt-1 text-sm opacity-80">{t("player.finished.text")}</p>
+          {showQuiz && quizStationIds.length > 0 && (
+            <p className="mt-3 flex items-center justify-center gap-1.5 font-medium text-primary">
+              <Trophy aria-hidden="true" className="size-4" />
+              {quizPoints}/{quizStationIds.length} {t("quiz.points")}
+            </p>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowOverview(true)}
+            className="mt-5 rounded-full"
+          >
+            {t("player.overview")}
+          </Button>
+        </div>
+      )}
+
+      {/* Übersicht: alle Stationen kompakt, jederzeit erreichbar */}
+      {showOverview && (
+      <div className="fixed inset-0 z-50 flex flex-col justify-end">
+        <button
+          type="button"
+          aria-label={t("player.back")}
+          onClick={() => setShowOverview(false)}
+          className="absolute inset-0 bg-foreground/40 backdrop-blur-[1px]"
+        />
+        <div className="relative flex max-h-[85vh] flex-col rounded-t-2xl border bg-background p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-serif text-xl font-semibold tracking-tight">
+              {t("player.overview")}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setShowOverview(false)}
+              aria-label={t("player.back")}
+              className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <X aria-hidden="true" className="size-4" />
+            </button>
+          </div>
+
+          <div className="mt-4 h-40 shrink-0 overflow-hidden rounded-2xl border">
+            <TourMap
+              stations={stations.map((s) => ({
+                id: s.id,
+                title: s.title,
+                latitude: s.latitude,
+                longitude: s.longitude,
+              }))}
+              activeStationId={activeStationId}
+              userPosition={
+                position
+                  ? { latitude: position.latitude, longitude: position.longitude }
+                  : null
+              }
+              className="h-40 w-full"
+            />
+          </div>
+
+          <ol className="mt-4 flex flex-col gap-2 overflow-y-auto">
+            {stations.map((station, index) => {
+              const isHeard = heard.has(station.id);
+              const isActive = activeStationId === station.id;
+              const distance = position
+                ? distanceMeters(
+                    { latitude: position.latitude, longitude: position.longitude },
+                    station,
+                  )
+                : null;
+
+              return (
+                <li key={station.id}>
+                  <button
+                    type="button"
+                    onClick={() => openStation(station.id)}
+                    className={cn(
+                      "flex min-h-11 w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors",
+                      isActive
+                        ? "border-primary/60 bg-primary/[0.04]"
+                        : "hover:border-primary/40",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
+                        isActive
+                          ? "bg-primary text-primary-foreground"
+                          : isHeard
+                            ? "bg-secondary/15 text-secondary"
+                            : "bg-primary/12 text-primary",
+                      )}
+                    >
+                      {isHeard && !isActive ? (
+                        <Check aria-hidden="true" className="size-4" />
+                      ) : (
+                        index + 1
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                      {station.title}
+                    </span>
+                    {distance !== null && (
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                        {formatDistance(distance)}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      </div>
       )}
     </div>
   );

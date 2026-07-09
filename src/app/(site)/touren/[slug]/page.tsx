@@ -347,6 +347,8 @@ export default async function TourDetailPage({
           >
             <TourPlayer
               tourId={tour.id}
+              tourTitle={tour.title}
+              coverImageUrl={tour.cover_image_url}
               stations={stations}
               media={result.media}
               quiz={result.quiz}
@@ -356,6 +358,8 @@ export default async function TourDetailPage({
         ) : (
           <TourPlayer
             tourId={tour.id}
+            tourTitle={tour.title}
+            coverImageUrl={tour.cover_image_url}
             stations={stations}
             media={result.media}
             quiz={result.quiz}
