@@ -77,6 +77,11 @@ export const dictionaries: Record<UiLocale, Dict> = {
     "quiz.correct": "Richtig! 🎉",
     "quiz.wrong": "Leider falsch.",
     "quiz.points": "Punkte",
+    "offline.download": "Für offline speichern",
+    "offline.downloading": "Wird gespeichert …",
+    "offline.done": "Offline verfügbar",
+    "offline.remove": "Entfernen",
+    "offline.error": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
   },
   en: {
     "nav.tours": "Tours",
@@ -141,5 +146,10 @@ export const dictionaries: Record<UiLocale, Dict> = {
     "quiz.correct": "Correct! 🎉",
     "quiz.wrong": "Not quite.",
     "quiz.points": "points",
+    "offline.download": "Save for offline",
+    "offline.downloading": "Saving …",
+    "offline.done": "Available offline",
+    "offline.remove": "Remove",
+    "offline.error": "Couldn't save. Please try again.",
   },
 };

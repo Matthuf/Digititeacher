@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Geist, Geist_Mono } from "next/font/google";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -23,6 +24,11 @@ export const metadata: Metadata = {
   title: "SendaLore – Geschichten, die deinen Weg begleiten",
   description:
     "GPS-geführte Audiotouren zum Wandern – handgemacht, direkt im Browser, ohne App.",
+  appleWebApp: { title: "SendaLore" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#a9622a",
 };
 
 export default function RootLayout({
@@ -35,7 +41,10 @@ export default function RootLayout({
       lang="de"
       className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <ServiceWorkerRegister />
+        {children}
+      </body>
     </html>
   );
 }

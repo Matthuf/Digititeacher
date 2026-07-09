@@ -24,6 +24,7 @@ import {
 import { GENRES, isGenre } from "@/lib/genres";
 import { TourPlayer } from "@/components/tour-player";
 import { TourFeedbackSection } from "@/components/tour-feedback";
+import { OfflineDownloadButton } from "@/components/offline-download-button";
 import { Reveal } from "@/components/reveal";
 import { T } from "@/components/i18n/t";
 import { submitFeedback } from "./actions";
@@ -187,6 +188,17 @@ export default async function TourDetailPage({
 
   const genre = isGenre(tour.genre) ? GENRES[tour.genre] : null;
 
+  // Dateien für den Offline-Download: Cover, Audios und Stationsbilder.
+  // Videos und Kartenkacheln bleiben aussen vor (Grösse/CORS).
+  const offlineUrls = [
+    tour.cover_image_url,
+    ...stations.map((s) => s.audio_url),
+    ...Object.values(result.media)
+      .flat()
+      .filter((m) => m.media_type === "image")
+      .map((m) => m.url),
+  ].filter((url): url is string => Boolean(url));
+
   return (
     <article className="mx-auto max-w-3xl px-6 py-12 sm:py-16">
       <Reveal>
@@ -273,6 +285,13 @@ export default async function TourDetailPage({
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
               {tour.description}
             </p>
+          </Reveal>
+        )}
+        {offlineUrls.length > 0 && (
+          <Reveal delay={0.2}>
+            <div className="mt-6">
+              <OfflineDownloadButton tourId={tour.id} urls={offlineUrls} />
+            </div>
           </Reveal>
         )}
       </header>
