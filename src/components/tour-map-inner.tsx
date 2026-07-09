@@ -66,9 +66,9 @@ export function TourMap({
           center={[userPosition.latitude, userPosition.longitude]}
           radius={8}
           pathOptions={{
-            color: "#fbf6ec",
+            color: "#f7f1e6",
             weight: 3,
-            fillColor: "#1f2e2c",
+            fillColor: "#18312b",
             fillOpacity: 1,
           }}
         />

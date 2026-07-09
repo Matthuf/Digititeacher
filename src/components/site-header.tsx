@@ -19,12 +19,6 @@ export function SiteHeader() {
           >
             <T k="nav.tours" />
           </Link>
-          <Link
-            href="/studio"
-            className="rounded-md border px-3 py-1.5 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-          >
-            <T k="nav.studio" />
-          </Link>
           <LanguageSwitch />
         </nav>
       </div>

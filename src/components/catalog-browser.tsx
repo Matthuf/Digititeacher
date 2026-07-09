@@ -75,9 +75,15 @@ export function CatalogBrowser({ tours }: { tours: TourWithPin[] }) {
       longitude: tr.mapPosition!.lng,
     }));
 
+  // Bei wenigen Touren wirkt eine volle Such-/Filterleiste leer und
+  // überdimensioniert (Designregeln.md §Tourenübersicht) – dann reicht die
+  // kuratierte Liste.
+  const showFilterBar = tours.length > 4;
+
   return (
     <div>
       {/* Filter bar */}
+      {showFilterBar && (
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <div className="relative flex-1 sm:min-w-[220px]">
           <Search
@@ -170,6 +176,7 @@ export function CatalogBrowser({ tours }: { tours: TourWithPin[] }) {
           </button>
         </div>
       </div>
+      )}
 
       {filtered.length === 0 && (
         <div className="mt-10 rounded-2xl border border-dashed p-10 text-center">

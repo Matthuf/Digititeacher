@@ -1,11 +1,15 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Clock, Headphones, MapPin, Mountain } from "lucide-react";
 import { Ridgeline } from "@/components/ridgeline";
 import { GENRES, isGenre } from "@/lib/genres";
+import { useLanguage } from "@/lib/i18n/language-context";
 import type { Tour } from "@/lib/tours";
 
 export function TourCard({ tour }: { tour: Tour }) {
+  const { t } = useLanguage();
   const genre = isGenre(tour.genre) ? GENRES[tour.genre] : null;
 
   return (
@@ -37,13 +41,23 @@ export function TourCard({ tour }: { tour: Tour }) {
               <Ridgeline className="relative h-20 w-full text-background/70" />
             </div>
           )}
-          {genre && (
+          <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
+            {genre ? (
+              <span
+                className={`rounded-full border px-3 py-1 text-xs font-medium backdrop-blur-sm ${genre.badgeClass} bg-background/85`}
+              >
+                {genre.label}
+              </span>
+            ) : (
+              <span />
+            )}
             <span
-              className={`absolute left-3 top-3 rounded-full border px-3 py-1 text-xs font-medium backdrop-blur-sm ${genre.badgeClass} bg-background/85`}
+              aria-label={t("tour.audio")}
+              className="flex size-7 shrink-0 items-center justify-center rounded-full bg-background/85 text-primary backdrop-blur-sm"
             >
-              {genre.label}
+              <Headphones aria-hidden="true" className="size-3.5" />
             </span>
-          )}
+          </div>
         </div>
 
         <div className="flex flex-1 flex-col p-5">
@@ -74,11 +88,14 @@ export function TourCard({ tour }: { tour: Tour }) {
                 {tour.difficulty}
               </span>
             )}
+          </div>
+          <span className="mt-4 flex items-center gap-1.5 text-sm font-bold text-primary">
+            {t("tour.open")}
             <ArrowRight
               aria-hidden="true"
-              className="ml-auto size-4 text-primary transition-transform duration-300 group-hover:translate-x-1"
+              className="size-4 transition-transform duration-300 group-hover:translate-x-1"
             />
-          </div>
+          </span>
         </div>
       </article>
     </Link>

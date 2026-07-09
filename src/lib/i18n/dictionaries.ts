@@ -20,17 +20,18 @@ export const dictionaries: Record<UiLocale, Dict> = {
     "hero.titleMain": "Geschichten, die deinen Weg",
     "hero.titleAccent": "begleiten",
     "hero.subtitle":
-      "Geschichten für Kinder, Wissen über Natur und Kultur, Rundgänge zu zweit – erzählt genau dort, wo du gerade stehst. Direkt im Browser.",
+      "Audiotouren für Natur, Kultur und kleine Abenteuer. Die Geschichten starten automatisch dort, wo du gerade stehst. Ohne App.",
     "hero.cta": "Touren entdecken",
     "features.autoplay.title": "GPS-Autoplay",
     "features.autoplay.text":
       "Die Erzählung startet automatisch, sobald du eine Station erreichst.",
-    "features.noapp.title": "Keine App nötig",
-    "features.noapp.text":
-      "Alles läuft direkt im Browser – Link öffnen und loswandern.",
-    "features.handmade.title": "Von Hand gemacht",
+    "features.noapp.title": "Ohne App",
+    "features.noapp.text": "Direkt im Browser – Link öffnen und loswandern.",
+    "features.handmade.title": "Sorgfältig erstellt",
     "features.handmade.text":
-      "Jede Tour ist recherchiert, geschrieben und selbst vertont.",
+      "Jede Tour ist recherchiert, geschrieben und erzählerisch aufbereitet.",
+    "tour.open": "Tour öffnen",
+    "tour.audio": "Audioguide verfügbar",
     "catalog.title": "Alle Touren",
     "catalog.count.one": "Tour online",
     "catalog.count.other": "Touren online",
@@ -92,16 +93,18 @@ export const dictionaries: Record<UiLocale, Dict> = {
     "hero.titleMain": "Stories that",
     "hero.titleAccent": "walk with you",
     "hero.subtitle":
-      "Stories for kids, knowledge about nature and culture, walks for two — told exactly where you're standing. Right in your browser.",
+      "Audio tours for nature, culture and small adventures. The stories start automatically right where you're standing. No app.",
     "hero.cta": "Discover tours",
     "features.autoplay.title": "GPS autoplay",
     "features.autoplay.text":
       "The narration starts automatically as soon as you reach a station.",
-    "features.noapp.title": "No app needed",
-    "features.noapp.text": "Everything runs in the browser — open the link and go.",
-    "features.handmade.title": "Handmade",
+    "features.noapp.title": "No app",
+    "features.noapp.text": "Right in your browser — open the link and go.",
+    "features.handmade.title": "Carefully crafted",
     "features.handmade.text":
-      "Every tour is researched, written and narrated by hand.",
+      "Every tour is researched, written and narrated with care.",
+    "tour.open": "Open tour",
+    "tour.audio": "Audio guide available",
     "catalog.title": "All tours",
     "catalog.count.one": "tour online",
     "catalog.count.other": "tours online",

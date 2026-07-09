@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Lora, Source_Sans_3 } from "next/font/google";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const sourceSans = Source_Sans_3({
+  variable: "--font-source-sans",
   subsets: ["latin"],
 });
 
@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+const lora = Lora({
+  variable: "--font-lora",
   subsets: ["latin"],
   weight: ["500", "600", "700"],
   style: ["normal", "italic"],
@@ -23,12 +23,12 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: "SendaLore – Geschichten, die deinen Weg begleiten",
   description:
-    "GPS-geführte Audiotouren zum Wandern – handgemacht, direkt im Browser, ohne App.",
+    "Audiotouren für Natur, Kultur und kleine Abenteuer. Die Geschichten starten automatisch dort, wo du gerade stehst. Ohne App.",
   appleWebApp: { title: "SendaLore" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#a9622a",
+  themeColor: "#b6672a",
 };
 
 export default function RootLayout({
@@ -39,7 +39,7 @@ export default function RootLayout({
   return (
     <html
       lang="de"
-      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${sourceSans.variable} ${geistMono.variable} ${lora.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <ServiceWorkerRegister />

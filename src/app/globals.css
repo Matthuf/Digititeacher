@@ -1,34 +1,57 @@
 @import "tailwindcss";
 
 :root {
-  /* Sunset Trail: warm parchment base, deep pine-petrol structure, muted rust-gold accent.
-     Primary is darkened enough to keep 4.5:1 contrast with parchment text on buttons. */
-  --background: #fbf6ec;
-  --foreground: #1f2e2c;
+  /* SendaLore Designregeln.md: dunkles Tannengrün, warmes Creme, Kupfer-Akzent.
+     Eine Palette, kein Dark Mode (siehe Designregeln §Farbsystem). */
+  --sl-forest: #18312b;
+  --sl-forest-2: #203d36;
+  --sl-cream: #f7f1e6;
+  --sl-cream-2: #efe6d7;
+  --sl-copper: #b6672a;
+  --sl-copper-dark: #99531f;
+  --sl-sage: #8fa59a;
+  --sl-mist: #d7ded4;
+  --sl-rose: #e9c8c5;
+  --sl-text: #1d2c29;
+  --sl-text-muted: #6f6a60;
+  --sl-border: #e4d8c7;
+  --sl-white-soft: #fffdf8;
 
-  --card: #fffdf8;
-  --card-foreground: #1f2e2c;
-  --popover: #fffdf8;
-  --popover-foreground: #1f2e2c;
-  --primary: #a9622a;
-  --primary-foreground: #fbf6ec;
-  --secondary: #1f2e2c;
-  --secondary-foreground: #fbf6ec;
-  --muted: #f0e4d0;
-  --muted-foreground: #6b5f53;
-  --accent: #f0e4d0;
-  --accent-foreground: #1f2e2c;
+  /* Kategorie-Akzente (Designregeln.md §Kategorien) */
+  --cat-nature: #b6672a;
+  --cat-children: #3b9c91;
+  --cat-culture: #7f6a9f;
+  --cat-couple: #c47c6d;
+  --cat-history: #8a7355;
+
+  /* shadcn-Aliase auf die SendaLore-Tokens gemappt */
+  --background: var(--sl-cream);
+  --foreground: var(--sl-text);
+
+  --card: var(--sl-white-soft);
+  --card-foreground: var(--sl-text);
+  --popover: var(--sl-white-soft);
+  --popover-foreground: var(--sl-text);
+  --primary: var(--sl-copper);
+  --primary-foreground: var(--sl-white-soft);
+  --secondary: var(--sl-forest);
+  --secondary-foreground: var(--sl-cream);
+  --muted: var(--sl-cream-2);
+  --muted-foreground: var(--sl-text-muted);
+  --accent: var(--sl-cream-2);
+  --accent-foreground: var(--sl-text);
   --destructive: #b3402c;
-  --destructive-foreground: #fbf6ec;
-  --border: #e4d7c0;
-  --input: #e4d7c0;
-  --ring: #a9622a;
+  --destructive-foreground: var(--sl-white-soft);
+  --border: var(--sl-border);
+  --input: var(--sl-border);
+  --ring: var(--sl-copper);
   --radius: 0.75rem;
 
-  /* Twilight Ridge accents (design-system/MASTER.md §2) */
-  --mist: #2e8c77;
-  --dusk: #a83a63;
-  --twilight: #5b4a78;
+  /* Atmosphäre-Akzente für Hero/Illustration + sekundäre UI-Signale.
+     --mist ist mit sl-forest abgedunkelt, damit er auch als Text/Icon
+     genug Kontrast auf Creme hat (sl-mist selbst ist reine Fläche/Fog). */
+  --mist: #46645b;
+  --dusk: var(--sl-rose);
 }
 
 @theme inline {
@@ -57,39 +80,15 @@
   --radius-xl: calc(var(--radius) + 0.25rem);
   --color-mist: var(--mist);
   --color-dusk: var(--dusk);
-  --color-twilight: var(--twilight);
-  --font-sans: var(--font-geist-sans);
+  --color-copper-dark: var(--sl-copper-dark);
+  --color-cat-nature: var(--cat-nature);
+  --color-cat-children: var(--cat-children);
+  --color-cat-culture: var(--cat-culture);
+  --color-cat-couple: var(--cat-couple);
+  --color-cat-history: var(--cat-history);
+  --font-sans: var(--font-source-sans);
   --font-mono: var(--font-geist-mono);
-  --font-serif: var(--font-fraunces);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #101d22;
-    --foreground: #f3ecdd;
-
-    --card: #16242b;
-    --card-foreground: #f3ecdd;
-    --popover: #16242b;
-    --popover-foreground: #f3ecdd;
-    --primary: #d68a4c;
-    --primary-foreground: #14201f;
-    --secondary: #f3ecdd;
-    --secondary-foreground: #14201f;
-    --muted: #24332f;
-    --muted-foreground: #b6a894;
-    --accent: #24332f;
-    --accent-foreground: #f3ecdd;
-    --destructive: #e06850;
-    --destructive-foreground: #14201f;
-    --border: #24363c;
-    --input: #24363c;
-    --ring: #d68a4c;
-
-    --mist: #4fd6b8;
-    --dusk: #e06b8a;
-    --twilight: #8f7bb8;
-  }
+  --font-serif: var(--font-lora);
 }
 
 body {
@@ -327,12 +326,6 @@ body {
   opacity: 0.14;
   animation: tr-fog-drift 12s ease-in-out infinite alternate;
   will-change: transform;
-}
-
-@media (prefers-color-scheme: dark) {
-  .tr-fog {
-    opacity: 0.22;
-  }
 }
 
 @keyframes tr-fog-drift {

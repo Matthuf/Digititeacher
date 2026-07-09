@@ -1,36 +1,38 @@
-// Erlebnis-Genres (design-system/MASTER.md §2.2): jedes Genre besetzt
-// einen Farbton des Twilight-Himmels.
+// Erlebnis-Genres (SendaLore_Designregeln.md §Kategorien): jedes Genre
+// besetzt eine der fünf definierten Kategorie-Farben.
 
 export const GENRES = {
   wissen: {
     label: "Wissen & Natur",
-    badgeClass: "bg-primary/10 text-primary border-primary/30",
-    lineClass: "bg-primary",
-    colorVar: "var(--primary)",
+    badgeClass: "bg-cat-nature/10 text-cat-nature border-cat-nature/30",
+    lineClass: "bg-cat-nature",
+    colorVar: "var(--cat-nature)",
   },
   kinder: {
     label: "Kindergeschichte",
-    badgeClass: "bg-mist/10 text-mist border-mist/30",
-    lineClass: "bg-mist",
-    colorVar: "var(--mist)",
+    badgeClass: "bg-cat-children/10 text-cat-children border-cat-children/30",
+    lineClass: "bg-cat-children",
+    colorVar: "var(--cat-children)",
   },
   romantik: {
-    label: "Romantischer Rundgang",
-    badgeClass: "bg-dusk/10 text-dusk border-dusk/30",
-    lineClass: "bg-dusk",
-    colorVar: "var(--dusk)",
+    label: "Rundgang zu zweit",
+    badgeClass: "bg-cat-couple/10 text-cat-couple border-cat-couple/30",
+    lineClass: "bg-cat-couple",
+    colorVar: "var(--cat-couple)",
   },
   sagen: {
-    label: "Sagen & Mystik",
-    badgeClass: "bg-twilight/10 text-twilight border-twilight/30",
-    lineClass: "bg-twilight",
-    colorVar: "var(--twilight)",
+    label: "Sagen & Mythen",
+    badgeClass: "bg-cat-history/10 text-cat-history border-cat-history/30",
+    lineClass: "bg-cat-history",
+    colorVar: "var(--cat-history)",
   },
   schule: {
+    // Kein eigenes Farbpaar in den Designregeln definiert; nutzt den
+    // ruhigen "Kultur & Geschichte"-Ton (ged. Violett/Braun) als Basis.
     label: "Schule & Exkursion",
-    badgeClass: "bg-secondary/10 text-foreground border-border",
-    lineClass: "bg-secondary",
-    colorVar: "var(--secondary)",
+    badgeClass: "bg-cat-culture/10 text-cat-culture border-cat-culture/30",
+    lineClass: "bg-cat-culture",
+    colorVar: "var(--cat-culture)",
   },
 } as const;
 
