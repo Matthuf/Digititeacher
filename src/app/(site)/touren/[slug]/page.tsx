@@ -158,7 +158,7 @@ export default async function TourDetailPage({
           <T k="tour.loadError.text" />
         </p>
         <Link
-          href="/"
+          href="/touren"
           className="mt-6 inline-flex items-center gap-2 text-sm text-primary hover:underline"
         >
           <ArrowLeft aria-hidden="true" className="size-4" />
@@ -230,7 +230,7 @@ export default async function TourDetailPage({
       <Reveal>
         <div className="flex items-center justify-between gap-4">
           <Link
-            href="/#touren"
+            href="/touren"
             className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft aria-hidden="true" className="size-4" />

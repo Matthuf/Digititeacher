@@ -14,7 +14,7 @@ export function SiteHeader() {
         </Link>
         <nav className="flex items-center gap-4 text-sm sm:gap-6">
           <Link
-            href="/#touren"
+            href="/touren"
             className="tr-navlink text-muted-foreground transition-colors hover:text-foreground"
           >
             <T k="nav.tours" />

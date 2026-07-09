@@ -12,6 +12,7 @@ export type Tour = {
   genre?: string | null;
   status: TourStatus;
   price: number | null;
+  is_featured: boolean;
   created_at: string;
   updated_at: string;
 };

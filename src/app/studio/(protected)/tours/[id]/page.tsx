@@ -252,6 +252,15 @@ export default async function EditTourPage({
                 <option value="published">Veröffentlicht</option>
               </select>
             </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="is_featured"
+                defaultChecked={tour.is_featured}
+                className="size-4 accent-primary"
+              />
+              Als Highlight auf der Startseite zeigen
+            </label>
             {error && <p className="text-sm text-destructive">{error}</p>}
             {saved && <p className="text-sm text-muted-foreground">Gespeichert.</p>}
             <Button type="submit" className="mt-2">

@@ -1,45 +1,12 @@
 import Link from "next/link";
-import { Compass, Navigation, PenLine, Smartphone } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { ArrowRight, Compass, Navigation, PenLine, Smartphone } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/is-configured";
-import type { Tour } from "@/lib/tours";
+import { getFeaturedToursWithPins, type TourWithPin } from "@/lib/get-tours";
 import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/reveal";
 import { TwilightRidges } from "@/components/twilight-ridges";
-import { CatalogBrowser } from "@/components/catalog-browser";
+import { TourCarousel } from "@/components/tour-carousel";
 import { T } from "@/components/i18n/t";
-
-type TourWithPin = Tour & { mapPosition: { lat: number; lng: number } | null };
-
-async function getPublishedToursWithPins(): Promise<TourWithPin[]> {
-  const supabase = await createClient();
-  const { data: tours, error } = await supabase
-    .from("tours")
-    .select("*")
-    .eq("status", "published")
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-  if (!tours || tours.length === 0) return [];
-
-  const { data: stations } = await supabase
-    .from("stations")
-    .select("tour_id, latitude, longitude, order_index")
-    .in("tour_id", tours.map((t) => t.id))
-    .order("order_index", { ascending: true });
-
-  const firstStationByTour = new Map<string, { lat: number; lng: number }>();
-  for (const s of stations ?? []) {
-    if (!firstStationByTour.has(s.tour_id)) {
-      firstStationByTour.set(s.tour_id, { lat: s.latitude, lng: s.longitude });
-    }
-  }
-
-  return tours.map((tour) => ({
-    ...tour,
-    mapPosition: firstStationByTour.get(tour.id) ?? null,
-  }));
-}
 
 const features = [
   { icon: Navigation, key: "autoplay" },
@@ -53,7 +20,7 @@ export default async function HomePage() {
 
   if (isSupabaseConfigured) {
     try {
-      tours = await getPublishedToursWithPins();
+      tours = await getFeaturedToursWithPins();
     } catch {
       loadError = true;
     }
@@ -89,7 +56,7 @@ export default async function HomePage() {
           <Reveal delay={0.24}>
             <div className="mt-9">
               <Button asChild size="lg" className="rounded-full px-7">
-                <Link href="/#touren">
+                <Link href="/touren">
                   <T k="hero.cta" />
                 </Link>
               </Button>
@@ -121,70 +88,30 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Catalog */}
-      <section id="touren" className="scroll-mt-24">
-        <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
-          <Reveal>
-            <div>
-              <h2 className="font-serif text-3xl font-semibold tracking-tight">
-                <T k="catalog.title" />
-              </h2>
-              {tours.length > 0 && (
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {tours.length}{" "}
-                  <T k={tours.length === 1 ? "catalog.count.one" : "catalog.count.other"} />
-                </p>
-              )}
+      {/* Highlight-Touren */}
+      {isSupabaseConfigured && !loadError && tours.length > 0 && (
+        <section id="touren" className="scroll-mt-24">
+          <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
+            <Reveal>
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <h2 className="font-serif text-3xl font-semibold tracking-tight">
+                  <T k="home.highlights.title" />
+                </h2>
+                <Link
+                  href="/touren"
+                  className="flex items-center gap-1.5 text-sm font-bold text-primary"
+                >
+                  <T k="home.highlights.viewAll" />
+                  <ArrowRight aria-hidden="true" className="size-4" />
+                </Link>
+              </div>
+            </Reveal>
+            <div className="mt-8">
+              <TourCarousel tours={tours} />
             </div>
-          </Reveal>
-
-          {!isSupabaseConfigured && (
-            <Reveal delay={0.1}>
-              <div className="mt-10 rounded-2xl border border-dashed p-10 text-center">
-                <Compass
-                  aria-hidden="true"
-                  className="mx-auto size-8 text-muted-foreground"
-                />
-                <p className="mt-4 text-sm text-muted-foreground">
-                  <T k="catalog.notConfigured" />
-                </p>
-              </div>
-            </Reveal>
-          )}
-
-          {loadError && (
-            <Reveal delay={0.1}>
-              <div className="mt-10 rounded-2xl border border-destructive/40 bg-destructive/5 p-10 text-center">
-                <p className="text-sm text-muted-foreground">
-                  <T k="catalog.loadError" />
-                </p>
-              </div>
-            </Reveal>
-          )}
-
-          {isSupabaseConfigured && !loadError && tours.length === 0 && (
-            <Reveal delay={0.1}>
-              <div className="mt-10 rounded-2xl border border-dashed p-10 text-center">
-                <Compass
-                  aria-hidden="true"
-                  className="mx-auto size-8 text-muted-foreground"
-                />
-                <p className="mt-4 text-sm text-muted-foreground">
-                  <T k="catalog.empty.before" />{" "}
-                  <Link href="/studio" className="underline hover:text-foreground">
-                    <T k="catalog.empty.studio" />
-                  </Link>
-                  .
-                </p>
-              </div>
-            </Reveal>
-          )}
-
-          {isSupabaseConfigured && !loadError && tours.length > 0 && (
-            <CatalogBrowser tours={tours} />
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
     </>
   );
 }
