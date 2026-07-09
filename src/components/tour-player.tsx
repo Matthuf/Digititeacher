@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ArrowRight,
   Check,
   FileText,
   HelpCircle,
@@ -12,6 +13,7 @@ import {
   RotateCcw,
   RotateCw,
   Trophy,
+  X,
 } from "lucide-react";
 import { TourMap } from "@/components/tour-map";
 import { MediaCarousel } from "@/components/media-carousel";
@@ -115,12 +117,18 @@ export function TourPlayer({
   );
   const [geoError, setGeoError] = useState<string | null>(null);
   const [autoPlay, setAutoPlay] = useState(false);
-  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [activeStationId, setActiveStationId] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState<{
+    currentTime: number;
+    duration: number;
+  } | null>(null);
   const [heard, setHeard] = useState<Set<string>>(new Set());
   const [quizAnswers, setQuizAnswers] = useState<
     Record<string, "correct" | "wrong">
   >({});
   const audioRefs = useRef(new Map<string, HTMLAudioElement>());
+  const stationRefs = useRef(new Map<string, HTMLLIElement>());
   const triggeredRef = useRef(new Set<string>());
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
@@ -187,8 +195,9 @@ export function TourPlayer({
     }
     const audio = audioRefs.current.get(id);
     if (audio) {
+      setProgress(null);
       audio.play();
-      setPlayingId(id);
+      setActiveStationId(id);
     }
   }, []);
 
@@ -238,7 +247,7 @@ export function TourPlayer({
 
   // Bildschirm während aktiver Tour wach halten (progressive enhancement).
   useEffect(() => {
-    const active = autoPlay || playingId !== null;
+    const active = autoPlay || isPlaying;
 
     async function acquire() {
       try {
@@ -269,14 +278,13 @@ export function TourPlayer({
 
     wakeLockRef.current?.release().catch(() => {});
     wakeLockRef.current = null;
-  }, [autoPlay, playingId]);
+  }, [autoPlay, isPlaying]);
 
   function toggleStation(id: string) {
     const audio = audioRefs.current.get(id);
     if (!audio) return;
-    if (playingId === id && !audio.paused) {
+    if (activeStationId === id && !audio.paused) {
       audio.pause();
-      setPlayingId(null);
     } else {
       playStation(id);
     }
@@ -291,16 +299,50 @@ export function TourPlayer({
     );
   }
 
+  function scrollToStation(id: string) {
+    stationRefs.current.get(id)?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }
+
+  function markArrived(id: string) {
+    triggeredRef.current.add(id);
+    playStation(id);
+    scrollToStation(id);
+  }
+
   const heardCount = stations.filter((s) => heard.has(s.id)).length;
-  const quizStationIds = stations
-    .filter((s) => quiz[s.id])
-    .map((s) => s.id);
+  const quizStationIds = stations.filter((s) => quiz[s.id]).map((s) => s.id);
   const quizPoints = quizStationIds.filter(
     (id) => quizAnswers[id] === "correct",
   ).length;
 
+  const activeStation = activeStationId
+    ? stations.find((s) => s.id === activeStationId) ?? null
+    : null;
+  const chapterNumber = activeStationId
+    ? stations.findIndex((s) => s.id === activeStationId) + 1
+    : Math.min(heardCount + 1, stations.length);
+
+  const activeIndex = activeStationId
+    ? stations.findIndex((s) => s.id === activeStationId)
+    : -1;
+  const nextStation =
+    stations.slice(activeIndex + 1).find((s) => !heard.has(s.id)) ?? null;
+  const nextDistance =
+    position && nextStation
+      ? distanceMeters(
+          { latitude: position.latitude, longitude: position.longitude },
+          nextStation,
+        )
+      : null;
+  const nextStationImage = nextStation
+    ? (media[nextStation.id] ?? []).find((m) => m.media_type === "image")
+    : undefined;
+
   return (
-    <div className="flex flex-col gap-8">
+    <div className={cn("flex flex-col gap-8", activeStationId && "pb-24")}>
       {/* GPS-Autoplay */}
       <div>
         <div className="flex flex-col gap-4 rounded-2xl bg-secondary p-5 text-secondary-foreground sm:flex-row sm:items-center sm:justify-between">
@@ -342,6 +384,44 @@ export function TourPlayer({
         )}
       </div>
 
+      {/* Nächste Station: Vorschau + manueller Fallback */}
+      {autoPlay && nextStation && (
+        <div className="flex items-center gap-4 rounded-2xl border border-dashed border-primary/40 bg-primary/[0.03] p-4">
+          {nextStationImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={nextStationImage.url}
+              alt=""
+              className="size-14 shrink-0 rounded-xl object-cover"
+            />
+          ) : (
+            <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+              <MapPin aria-hidden="true" className="size-5" />
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium uppercase tracking-wide text-primary">
+              {t("player.nextStation")}
+            </p>
+            <p className="truncate text-sm font-semibold">{nextStation.title}</p>
+            <p className="text-xs text-muted-foreground">
+              {nextDistance !== null
+                ? formatDistance(nextDistance)
+                : t("player.locating")}
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => markArrived(nextStation.id)}
+            className="shrink-0"
+          >
+            {t("player.imHere")}
+          </Button>
+        </div>
+      )}
+
       {/* Karte */}
       <div className="relative z-0 overflow-hidden rounded-2xl border">
         <TourMap
@@ -351,7 +431,7 @@ export function TourPlayer({
             latitude: s.latitude,
             longitude: s.longitude,
           }))}
-          activeStationId={playingId}
+          activeStationId={activeStationId}
           userPosition={
             position
               ? { latitude: position.latitude, longitude: position.longitude }
@@ -362,36 +442,41 @@ export function TourPlayer({
       </div>
 
       {/* Fortschritt */}
-      {heardCount > 0 && (
-        <div>
-          <div className="flex items-center justify-between text-sm">
-            <p className="text-muted-foreground">
-              <span className="font-medium text-foreground">
-                {heardCount} {t("player.of")} {stations.length}
-              </span>{" "}
-              {t("player.progress")}
+      <div>
+        <div className="flex items-center justify-between text-sm">
+          <p className="text-muted-foreground">
+            <span className="font-medium text-foreground">
+              {t("player.chapter")} {chapterNumber}
+            </span>{" "}
+            {t("player.of")} {stations.length}
+          </p>
+          {showQuiz && quizStationIds.length > 0 && (
+            <p className="flex items-center gap-1.5 font-medium text-primary">
+              <Trophy aria-hidden="true" className="size-4" />
+              {quizPoints} / {quizStationIds.length} {t("quiz.points")}
             </p>
-            {showQuiz && quizStationIds.length > 0 && (
-              <p className="flex items-center gap-1.5 font-medium text-primary">
-                <Trophy aria-hidden="true" className="size-4" />
-                {quizPoints} / {quizStationIds.length} {t("quiz.points")}
-              </p>
-            )}
-          </div>
-          <div
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={stations.length}
-            aria-valuenow={heardCount}
-            className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"
-          >
-            <div
-              className="h-full rounded-full bg-mist transition-all duration-500"
-              style={{ width: `${(heardCount / stations.length) * 100}%` }}
-            />
-          </div>
+          )}
         </div>
-      )}
+        {heardCount > 0 && (
+          <>
+            <div
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={stations.length}
+              aria-valuenow={heardCount}
+              className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"
+            >
+              <div
+                className="h-full rounded-full bg-mist transition-all duration-500"
+                style={{ width: `${(heardCount / stations.length) * 100}%` }}
+              />
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {heardCount} {t("player.of")} {stations.length} {t("player.progress")}
+            </p>
+          </>
+        )}
+      </div>
 
       {/* Stationen */}
       <ol className="flex flex-col gap-4">
@@ -405,15 +490,21 @@ export function TourPlayer({
                 station,
               )
             : null;
-          const isPlaying = playingId === station.id;
+          const isActive = activeStationId === station.id;
           const isHeard = heard.has(station.id);
 
           return (
-            <li key={station.id}>
+            <li
+              key={station.id}
+              ref={(el) => {
+                if (el) stationRefs.current.set(station.id, el);
+                else stationRefs.current.delete(station.id);
+              }}
+            >
               <div
                 className={cn(
                   "rounded-2xl border bg-card p-5 transition-all duration-300",
-                  isPlaying &&
+                  isActive &&
                     "border-primary/60 bg-primary/[0.04] ring-1 ring-primary/40",
                 )}
               >
@@ -421,14 +512,14 @@ export function TourPlayer({
                   <span
                     className={cn(
                       "flex size-9 shrink-0 items-center justify-center rounded-full font-serif text-sm font-semibold transition-colors",
-                      isPlaying
+                      isActive
                         ? "bg-primary text-primary-foreground"
                         : isHeard
                           ? "bg-mist/15 text-mist"
                           : "bg-primary/12 text-primary",
                     )}
                   >
-                    {isHeard && !isPlaying ? (
+                    {isHeard && !isActive ? (
                       <Check aria-hidden="true" className="size-4" />
                     ) : (
                       index + 1
@@ -438,7 +529,7 @@ export function TourPlayer({
                     <div className="flex items-center justify-between gap-3">
                       <h2 className="flex items-center gap-2.5 font-serif text-lg font-semibold tracking-tight">
                         {station.title}
-                        {isPlaying && (
+                        {isActive && isPlaying && (
                           <span aria-hidden="true" className="dt-eq">
                             <span />
                             <span />
@@ -469,13 +560,13 @@ export function TourPlayer({
                           size="icon"
                           onClick={() => toggleStation(station.id)}
                           aria-label={
-                            isPlaying
+                            isActive && isPlaying
                               ? `${station.title} pausieren`
                               : `${station.title} abspielen`
                           }
                           className="size-11 shrink-0 rounded-full"
                         >
-                          {isPlaying ? (
+                          {isActive && isPlaying ? (
                             <Pause aria-hidden="true" />
                           ) : (
                             <Play aria-hidden="true" className="ml-0.5" />
@@ -510,17 +601,25 @@ export function TourPlayer({
                           controls
                           preload="none"
                           src={station.audio_url}
-                          onPlay={() => setPlayingId(station.id)}
+                          onPlay={() => {
+                            setActiveStationId(station.id);
+                            setIsPlaying(true);
+                          }}
                           onPause={() =>
-                            setPlayingId((current) =>
-                              current === station.id ? null : current,
+                            setIsPlaying((current) =>
+                              activeStationId === station.id ? false : current,
                             )
+                          }
+                          onTimeUpdate={(e) =>
+                            setProgress({
+                              currentTime: e.currentTarget.currentTime,
+                              duration: e.currentTarget.duration || 0,
+                            })
                           }
                           onEnded={() => {
                             markHeard(station.id);
-                            setPlayingId((current) =>
-                              current === station.id ? null : current,
-                            );
+                            setIsPlaying(false);
+                            setProgress(null);
                           }}
                         />
                       </div>
@@ -563,6 +662,112 @@ export function TourPlayer({
           );
         })}
       </ol>
+
+      {/* Persistenter Mini-Player */}
+      {activeStation && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-secondary text-secondary-foreground shadow-lg">
+          {progress && progress.duration > 0 && (
+            <div className="h-1 w-full bg-white/15">
+              <div
+                className="h-full bg-primary transition-all duration-200"
+                style={{
+                  width: `${(progress.currentTime / progress.duration) * 100}%`,
+                }}
+              />
+            </div>
+          )}
+          <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+            <button
+              type="button"
+              onClick={() => scrollToStation(activeStation.id)}
+              className="flex min-w-0 flex-1 items-center gap-3 text-left"
+            >
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
+                {isPlaying ? (
+                  <span aria-hidden="true" className="dt-eq">
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                ) : (
+                  <MapPin aria-hidden="true" className="size-4" />
+                )}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-xs opacity-70">
+                  {t("player.chapter")} {chapterNumber} {t("player.of")}{" "}
+                  {stations.length}
+                </span>
+                <span className="block truncate text-sm font-semibold">
+                  {activeStation.title}
+                </span>
+              </span>
+            </button>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={() => skip(activeStation.id, -15)}
+                aria-label="15 Sekunden zurück"
+                className="size-9 shrink-0 rounded-full text-secondary-foreground hover:bg-white/10"
+              >
+                <RotateCcw aria-hidden="true" className="size-4" />
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                onClick={() => toggleStation(activeStation.id)}
+                aria-label={isPlaying ? "Pausieren" : "Abspielen"}
+                className="size-11 shrink-0 rounded-full"
+              >
+                {isPlaying ? (
+                  <Pause aria-hidden="true" />
+                ) : (
+                  <Play aria-hidden="true" className="ml-0.5" />
+                )}
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={() => skip(activeStation.id, 15)}
+                aria-label="15 Sekunden vor"
+                className="size-9 shrink-0 rounded-full text-secondary-foreground hover:bg-white/10"
+              >
+                <RotateCw aria-hidden="true" className="size-4" />
+              </Button>
+              {nextStation && (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => scrollToStation(nextStation.id)}
+                  aria-label={t("player.nextStation")}
+                  className="hidden size-9 shrink-0 rounded-full text-secondary-foreground hover:bg-white/10 sm:flex"
+                >
+                  <ArrowRight aria-hidden="true" className="size-4" />
+                </Button>
+              )}
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={() => {
+                  audioRefs.current.get(activeStation.id)?.pause();
+                  setActiveStationId(null);
+                  setIsPlaying(false);
+                  setProgress(null);
+                }}
+                aria-label="Player schliessen"
+                className="size-9 shrink-0 rounded-full text-secondary-foreground hover:bg-white/10"
+              >
+                <X aria-hidden="true" className="size-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
