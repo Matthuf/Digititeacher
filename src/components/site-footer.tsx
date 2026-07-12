@@ -14,8 +14,14 @@ export function SiteFooter() {
         <p className="max-w-md text-sm text-muted-foreground">
           <T k="footer.tagline" />
         </p>
-        <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
           <span>© {new Date().getFullYear()} SendaLore</span>
+          <Link href="/impressum" className="hover:text-foreground">
+            <T k="footer.impressum" />
+          </Link>
+          <Link href="/datenschutz" className="hover:text-foreground">
+            <T k="footer.datenschutz" />
+          </Link>
           <Link href="/studio" className="hover:text-foreground">
             <T k="footer.studio" />
           </Link>
