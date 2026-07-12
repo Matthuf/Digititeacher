@@ -23,13 +23,14 @@ import {
 } from "@/lib/locales";
 import { GENRES, isGenre } from "@/lib/genres";
 import { retrieveCheckoutSession, stripeConfigured } from "@/lib/payments/stripe";
+import { hasPurchase } from "@/lib/payments/purchases";
 import { TourPlayer } from "@/components/tour-player";
 import { TourFeedbackSection } from "@/components/tour-feedback";
 import { OfflineDownloadButton } from "@/components/offline-download-button";
 import { PurchaseGate } from "@/components/purchase-gate";
 import { Reveal } from "@/components/reveal";
 import { T } from "@/components/i18n/t";
-import { startCheckout, submitFeedback } from "./actions";
+import { restorePurchase, startCheckout, submitFeedback } from "./actions";
 
 type TourData = {
   tour: Tour;
@@ -174,6 +175,7 @@ export default async function TourDetailPage({
     error?: string;
     checkout?: string;
     session_id?: string;
+    restored?: string;
   }>;
 }) {
   const { slug } = await params;
@@ -183,6 +185,7 @@ export default async function TourDetailPage({
     error: feedbackError,
     checkout,
     session_id: checkoutSessionId,
+    restored,
   } = await searchParams;
 
   if (!isSupabaseConfigured) notFound();
@@ -250,16 +253,31 @@ export default async function TourDetailPage({
 
   // Nach erfolgreichem Stripe-Checkout die Session serverseitig verifizieren,
   // bevor der Kauf im Browser als "freigeschaltet" markiert wird.
-  let justPurchased = false;
+  let unlocked = false;
   if (checkout === "success" && checkoutSessionId && stripeConfigured()) {
     const session = await retrieveCheckoutSession(checkoutSessionId);
-    justPurchased =
+    unlocked =
       session?.payment_status === "paid" &&
       session.metadata?.tour_id === tour.id;
   }
 
+  // Kauf-Wiederherstellung: Die E-Mail aus dem Query-Param (vom restorePurchase-
+  // Server-Action gesetzt) unabhängig gegen die purchases-Tabelle verifizieren –
+  // ein manuell getippter Parameter allein schaltet nicht frei.
+  let restoreFailed = false;
+  if (!unlocked && restored) {
+    if (restored === "notfound") {
+      restoreFailed = true;
+    } else {
+      const valid = await hasPurchase(tour.id, restored);
+      if (valid) unlocked = true;
+      else restoreFailed = true;
+    }
+  }
+
   const isPaid = !!tour.price && tour.price > 0 && stripeConfigured();
   const checkoutAction = startCheckout.bind(null, tour.id, slug);
+  const restoreAction = restorePurchase.bind(null, tour.id, slug);
 
   // Dateien für den Offline-Download: Cover, Audios und Stationsbilder.
   // Videos und Kartenkacheln bleiben aussen vor (Grösse/CORS).
@@ -387,8 +405,10 @@ export default async function TourDetailPage({
           <PurchaseGate
             tourId={tour.id}
             price={tour.price!}
-            justPurchased={justPurchased}
+            unlocked={unlocked}
+            restoreFailed={restoreFailed}
             checkoutAction={checkoutAction}
+            restoreAction={restoreAction}
           >
             <TourPlayer
               tourId={tour.id}

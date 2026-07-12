@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createCheckoutSession, stripeConfigured } from "@/lib/payments/stripe";
+import { hasPurchase } from "@/lib/payments/purchases";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 const TEN_MINUTES = 10 * 60 * 1000;
@@ -101,4 +102,39 @@ export async function startCheckout(tourId: string, slug: string) {
   }
 
   redirect(checkoutUrl);
+}
+
+// Kauf auf einem anderen Gerät/Browser wiederherstellen: E-Mail gegen die
+// purchases-Tabelle prüfen (Service-Role, keine RLS-Öffnung). Bei Treffer
+// wird die E-Mail als Query-Param zurückgegeben; die Tourseite verifiziert
+// sie serverseitig erneut (analog zur Stripe-Session-Prüfung), damit ein
+// manuell getippter Parameter allein nicht freischaltet.
+export async function restorePurchase(
+  tourId: string,
+  slug: string,
+  formData: FormData,
+) {
+  const email = String(formData.get("email") ?? "").trim();
+
+  // Enumerierungsschutz: strenger als der Checkout, da hier E-Mails geraten
+  // werden könnten.
+  const ip = await clientIp();
+  if (!rateLimit(`restore:${ip}`, 5, TEN_MINUTES)) {
+    redirect(
+      `/touren/${slug}?error=${encodeURIComponent(
+        "Zu viele Versuche. Bitte versuche es in ein paar Minuten erneut.",
+      )}`,
+    );
+  }
+
+  if (!email || !email.includes("@")) {
+    redirect(`/touren/${slug}?restored=notfound`);
+  }
+
+  const found = await hasPurchase(tourId, email);
+  if (!found) {
+    redirect(`/touren/${slug}?restored=notfound`);
+  }
+
+  redirect(`/touren/${slug}?restored=${encodeURIComponent(email)}`);
 }

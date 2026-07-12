@@ -99,6 +99,11 @@ export const dictionaries: Record<UiLocale, Dict> = {
     "offline.error": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
     "purchase.locked": "Diese Tour ist kostenpflichtig. Nach dem Kauf ist der Audioguide sofort freigeschaltet.",
     "purchase.buy": "Jetzt kaufen",
+    "purchase.restore.trigger": "Bereits gekauft? E-Mail eingeben",
+    "purchase.restore.emailLabel": "E-Mail-Adresse des Kaufs",
+    "purchase.restore.emailPlaceholder": "deine@email.ch",
+    "purchase.restore.submit": "Kauf wiederherstellen",
+    "purchase.restore.notFound": "Kein Kauf mit dieser E-Mail gefunden.",
   },
   en: {
     "nav.tours": "Tours",
@@ -186,5 +191,10 @@ export const dictionaries: Record<UiLocale, Dict> = {
     "offline.error": "Couldn't save. Please try again.",
     "purchase.locked": "This tour requires a one-time purchase. The audio guide unlocks immediately after checkout.",
     "purchase.buy": "Buy now",
+    "purchase.restore.trigger": "Already purchased? Enter your email",
+    "purchase.restore.emailLabel": "Email address used for the purchase",
+    "purchase.restore.emailPlaceholder": "you@email.com",
+    "purchase.restore.submit": "Restore purchase",
+    "purchase.restore.notFound": "No purchase found for this email.",
   },
 };
