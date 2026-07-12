@@ -166,6 +166,10 @@ export function TourPlayer({
 
   const audioRefs = useRef(new Map<string, HTMLAudioElement>());
   const triggeredRef = useRef(new Set<string>());
+  // Hysterese: zählt, wie oft eine Station in Folge im Radius lag. Erst ab
+  // zwei aufeinanderfolgenden Fixes wird ausgelöst – dämpft GPS-Jitter an der
+  // Radiusgrenze. Stationen, die wieder aus dem Radius fallen, werden gelöscht.
+  const proximityRef = useRef(new Map<string, number>());
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const routeAnchorRef = useRef<{
     stationId: string;
@@ -300,7 +304,9 @@ export function TourPlayer({
   useEffect(() => {
     if (!hasStarted || !position || activeStationId) return;
 
+    const counts = proximityRef.current;
     let arrived: string | null = null;
+
     for (const station of stations) {
       if (triggeredRef.current.has(station.id)) continue;
 
@@ -311,12 +317,19 @@ export function TourPlayer({
       const radius = station.trigger_radius_m ?? DEFAULT_TRIGGER_RADIUS_METERS;
 
       if (distance <= radius) {
-        triggeredRef.current.add(station.id);
-        arrived = station.id;
-        break;
+        const streak = (counts.get(station.id) ?? 0) + 1;
+        counts.set(station.id, streak);
+        // Erste Station, die zwei Fixes in Folge im Radius liegt, gewinnt.
+        if (streak >= 2 && arrived === null) arrived = station.id;
+      } else {
+        // Aus dem Radius gefallen – Zähler zurücksetzen.
+        counts.delete(station.id);
       }
     }
+
     if (!arrived) return;
+    triggeredRef.current.add(arrived);
+    counts.delete(arrived);
 
     const timer = setTimeout(() => openStation(arrived!, { chime: true }), 0);
     return () => clearTimeout(timer);
@@ -385,6 +398,25 @@ export function TourPlayer({
   const activeStationImage = activeStation
     ? (media[activeStation.id] ?? []).find((m) => m.media_type === "image")
     : undefined;
+
+  // Schwaches GPS-Signal (Genauigkeit schlechter als ~50 m) sichtbar machen,
+  // damit klar ist, warum der Auto-Start ggf. ausbleibt.
+  const weakGps =
+    position != null &&
+    typeof position.accuracy === "number" &&
+    position.accuracy > 50;
+
+  // Audio der nächsten Station vorab laden: wärmt den Browser-Cache, damit
+  // beim Stationswechsel nicht bei Null geladen wird. Nicht abspielen, nicht
+  // ins DOM hängen – der bare Audio-Node wird danach vom GC eingesammelt.
+  useEffect(() => {
+    const url = nextStation?.audio_url;
+    if (!url) return;
+    const audio = new Audio();
+    audio.preload = "auto";
+    audio.src = url;
+    audio.load();
+  }, [nextStation?.audio_url]);
 
   // Echte Fussweg-Route zur nächsten Station holen (OpenRouteService, falls
   // konfiguriert) – nur bei Stationswechsel oder deutlicher Bewegung neu
@@ -727,6 +759,11 @@ export function TourPlayer({
           {geoError && (
             <p className="text-sm text-destructive" role="alert">
               {geoError}
+            </p>
+          )}
+          {weakGps && !geoError && (
+            <p className="text-sm text-muted-foreground" role="status">
+              {t("player.weakGps")}
             </p>
           )}
           <div className="h-72 overflow-hidden rounded-2xl border sm:h-96">
