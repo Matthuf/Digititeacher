@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Clock, MapPin, Mountain } from "lucide-react";
@@ -113,6 +114,53 @@ async function getTour(slug: string): Promise<TourData | null> {
     feedback: fb.error ? [] : (fb.data ?? []),
     quiz,
   };
+}
+
+const FALLBACK_METADATA: Metadata = {
+  title: "SendaLore – Geschichten, die deinen Weg begleiten",
+  description:
+    "Audiotouren für Natur, Kultur und kleine Abenteuer. Die Geschichten starten automatisch dort, wo du gerade stehst. Ohne App.",
+};
+
+// Individuelle Metadaten pro Tour: teilbare Links (WhatsApp, Facebook,
+// Google) zeigen Tourname, -beschreibung und Coverbild statt des
+// generischen Seitentitels. Fehlt Supabase/die Tour, greift der Fallback –
+// nie werfen, damit die Seite trotzdem rendert.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  if (!isSupabaseConfigured) return FALLBACK_METADATA;
+
+  const { slug } = await params;
+  try {
+    const supabase = await createClient();
+    const { data: tour } = await supabase
+      .from("tours")
+      .select("title, description, cover_image_url")
+      .eq("slug", slug)
+      .eq("status", "published")
+      .maybeSingle();
+
+    if (!tour) return FALLBACK_METADATA;
+
+    const description = tour.description ?? FALLBACK_METADATA.description!;
+    const images = tour.cover_image_url ? [tour.cover_image_url] : undefined;
+
+    return {
+      title: `${tour.title} – SendaLore`,
+      description,
+      openGraph: {
+        title: tour.title,
+        description,
+        type: "article",
+        ...(images ? { images } : {}),
+      },
+    };
+  } catch {
+    return FALLBACK_METADATA;
+  }
 }
 
 export default async function TourDetailPage({
