@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { verifyStripeSignature } from "@/lib/payments/stripe";
+import type Stripe from "stripe";
+import { constructWebhookEvent } from "@/lib/payments/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 
 export async function POST(request: Request) {
@@ -9,27 +10,22 @@ export async function POST(request: Request) {
   }
 
   const signature = request.headers.get("stripe-signature");
+  // Stripe braucht den *rohen*, unveränderten Body zur Signaturprüfung.
   const payload = await request.text();
 
-  if (!signature || !verifyStripeSignature(payload, signature, secret)) {
+  if (!signature) {
+    return NextResponse.json({ error: "Signatur fehlt." }, { status: 400 });
+  }
+
+  let event: Stripe.Event;
+  try {
+    event = constructWebhookEvent(payload, signature, secret);
+  } catch {
     return NextResponse.json({ error: "Ungültige Signatur." }, { status: 400 });
   }
 
-  const event = JSON.parse(payload) as {
-    type: string;
-    data: {
-      object: {
-        id: string;
-        payment_status?: string;
-        payment_intent?: string;
-        metadata?: Record<string, string>;
-        customer_details?: { email: string | null } | null;
-      };
-    };
-  };
-
   if (event.type === "checkout.session.completed") {
-    const session = event.data.object;
+    const session = event.data.object as Stripe.Checkout.Session;
     const tourId = session.metadata?.tour_id;
 
     if (tourId && session.payment_status === "paid") {
@@ -38,7 +34,10 @@ export async function POST(request: Request) {
         await supabase.from("purchases").insert({
           tour_id: tourId,
           email: session.customer_details?.email ?? "unknown@sendalore.ch",
-          stripe_payment_id: session.payment_intent ?? session.id,
+          stripe_payment_id:
+            typeof session.payment_intent === "string"
+              ? session.payment_intent
+              : session.id,
         });
       }
     }

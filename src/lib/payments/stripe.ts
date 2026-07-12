@@ -1,9 +1,9 @@
-// Stripe-Anbindung per REST-API (kein SDK), analog zu lib/ai/deepl.ts.
-// Ohne STRIPE_SECRET_KEY bleibt die Kauf-Funktion einfach ausgeblendet.
+// Stripe-Anbindung über das offizielle SDK. Ohne STRIPE_SECRET_KEY bleibt die
+// Kauf-Funktion einfach ausgeblendet (Muster wie lib/ai/deepl.ts).
 
-import { createHmac, timingSafeEqual } from "crypto";
+import Stripe from "stripe";
 
-const STRIPE_API = "https://api.stripe.com/v1";
+let cached: Stripe | null = null;
 
 export function stripeConfigured(): boolean {
   return !!process.env.STRIPE_SECRET_KEY;
@@ -13,10 +13,16 @@ export function stripeWebhookConfigured(): boolean {
   return !!process.env.STRIPE_WEBHOOK_SECRET;
 }
 
-function authHeader() {
+// Währung für Checkout-Beträge. Server-seitig, Standard CHF – konfigurierbar
+// per TOUR_CURRENCY (kein vollständiges Multi-Currency-System pro Tour).
+const TOUR_CURRENCY = (process.env.TOUR_CURRENCY ?? "chf").toLowerCase();
+
+/** Lazily initialisierter Stripe-Client (nur mit gesetztem Secret aufrufen). */
+function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY ist nicht gesetzt.");
-  return { Authorization: `Bearer ${key}` };
+  if (!cached) cached = new Stripe(key);
+  return cached;
 }
 
 export async function createCheckoutSession(params: {
@@ -26,36 +32,26 @@ export async function createCheckoutSession(params: {
   successUrl: string;
   cancelUrl: string;
 }): Promise<{ url: string }> {
-  const body = new URLSearchParams();
-  body.set("mode", "payment");
-  body.set("success_url", params.successUrl);
-  body.set("cancel_url", params.cancelUrl);
-  body.set("line_items[0][quantity]", "1");
-  body.set("line_items[0][price_data][currency]", "chf");
-  body.set(
-    "line_items[0][price_data][unit_amount]",
-    String(Math.round(params.priceChf * 100)),
-  );
-  body.set("line_items[0][price_data][product_data][name]", params.title);
-  body.set("metadata[tour_id]", params.tourId);
-
-  const res = await fetch(`${STRIPE_API}/checkout/sessions`, {
-    method: "POST",
-    headers: {
-      ...authHeader(),
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body,
+  const stripe = getStripe();
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    success_url: params.successUrl,
+    cancel_url: params.cancelUrl,
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: TOUR_CURRENCY,
+          unit_amount: Math.round(params.priceChf * 100),
+          product_data: { name: params.title },
+        },
+      },
+    ],
+    metadata: { tour_id: params.tourId },
   });
 
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(`Stripe-Fehler (${res.status}): ${detail.slice(0, 200)}`);
-  }
-
-  const data = (await res.json()) as { url: string | null };
-  if (!data.url) throw new Error("Stripe hat keine Checkout-URL geliefert.");
-  return { url: data.url };
+  if (!session.url) throw new Error("Stripe hat keine Checkout-URL geliefert.");
+  return { url: session.url };
 }
 
 export type StripeCheckoutSession = {
@@ -67,39 +63,30 @@ export type StripeCheckoutSession = {
 export async function retrieveCheckoutSession(
   sessionId: string,
 ): Promise<StripeCheckoutSession | null> {
-  const res = await fetch(
-    `${STRIPE_API}/checkout/sessions/${encodeURIComponent(sessionId)}`,
-    { headers: authHeader() },
-  );
-  if (!res.ok) return null;
-  return (await res.json()) as StripeCheckoutSession;
+  try {
+    const stripe = getStripe();
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    return {
+      payment_status: session.payment_status ?? "",
+      metadata: (session.metadata ?? {}) as Record<string, string>,
+      customer_details: session.customer_details
+        ? { email: session.customer_details.email ?? null }
+        : null,
+    };
+  } catch {
+    return null;
+  }
 }
 
-/** Stripe-Webhook-Signatur prüfen (HMAC-SHA256, Header-Format "t=...,v1=..."). */
-export function verifyStripeSignature(
+/**
+ * Webhook-Signatur über das offizielle SDK prüfen und Event parsen. Ersetzt
+ * die frühere Eigenbau-HMAC-Prüfung – inkl. Timestamp-Toleranz gegen Replays.
+ * Wirft bei ungültiger Signatur.
+ */
+export function constructWebhookEvent(
   payload: string,
-  signatureHeader: string,
+  signature: string,
   secret: string,
-): boolean {
-  const parts = signatureHeader.split(",").reduce<Record<string, string>>(
-    (acc, part) => {
-      const [k, v] = part.split("=");
-      if (k && v) acc[k] = v;
-      return acc;
-    },
-    {},
-  );
-
-  const timestamp = parts.t;
-  const signature = parts.v1;
-  if (!timestamp || !signature) return false;
-
-  const expected = createHmac("sha256", secret)
-    .update(`${timestamp}.${payload}`)
-    .digest("hex");
-
-  const expectedBuf = Buffer.from(expected, "utf8");
-  const signatureBuf = Buffer.from(signature, "utf8");
-  if (expectedBuf.length !== signatureBuf.length) return false;
-  return timingSafeEqual(expectedBuf, signatureBuf);
+): Stripe.Event {
+  return getStripe().webhooks.constructEvent(payload, signature, secret);
 }
