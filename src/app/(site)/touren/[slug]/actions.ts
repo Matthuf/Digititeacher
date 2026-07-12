@@ -5,6 +5,9 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createCheckoutSession, stripeConfigured } from "@/lib/payments/stripe";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
+
+const TEN_MINUTES = 10 * 60 * 1000;
 
 export async function submitFeedback(
   tourId: string,
@@ -15,6 +18,15 @@ export async function submitFeedback(
   const comment = String(formData.get("comment") ?? "").trim() || null;
   const lang = String(formData.get("lang") ?? "");
   const query = lang ? `?lang=${encodeURIComponent(lang)}&` : "?";
+
+  const ip = await clientIp();
+  if (!rateLimit(`feedback:${ip}`, 5, TEN_MINUTES)) {
+    redirect(
+      `/touren/${slug}${query}error=${encodeURIComponent(
+        "Zu viele Anfragen. Bitte versuche es in ein paar Minuten erneut.",
+      )}`,
+    );
+  }
 
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
     redirect(`/touren/${slug}${query}error=Bitte%20eine%20Bewertung%20wählen`);
@@ -39,6 +51,15 @@ export async function startCheckout(tourId: string, slug: string) {
   if (!stripeConfigured()) {
     redirect(
       `/touren/${slug}?error=${encodeURIComponent("Zahlungen sind noch nicht eingerichtet.")}`,
+    );
+  }
+
+  const ip = await clientIp();
+  if (!rateLimit(`checkout:${ip}`, 10, TEN_MINUTES)) {
+    redirect(
+      `/touren/${slug}?error=${encodeURIComponent(
+        "Zu viele Anfragen. Bitte versuche es in ein paar Minuten erneut.",
+      )}`,
     );
   }
 
