@@ -52,6 +52,24 @@
      genug Kontrast auf Creme hat (sl-mist selbst ist reine Fläche/Fog). */
   --mist: #46645b;
   --dusk: var(--sl-rose);
+
+  /* Motion Tokens (Anforderungsdokument §11 – eine Quelle für CSS-Übergänge;
+     src/lib/motion.ts hält dieselben Werte in Sekunden für Framer Motion,
+     das keine CSS-Var-Referenzen in transition-Props annimmt). */
+  --duration-hover: 200ms;
+  --duration-button: 150ms;
+  --duration-reveal: 400ms;
+  --duration-page: 400ms;
+  --duration-sheet: 300ms;
+  --duration-marker: 700ms;
+  --ease-standard: cubic-bezier(0.21, 0.47, 0.32, 0.98);
+
+  /* Z-Index Tokens: feste Stapelreihenfolge für sticky Header, Overlays/
+     Bottom-Sheets und (künftige) Modals/Toasts, statt ad-hoc z-50-Werten. */
+  --z-sticky: 40;
+  --z-overlay: 50;
+  --z-modal: 60;
+  --z-toast: 70;
 }
 
 @theme inline {
@@ -113,9 +131,9 @@ body {
   position: relative;
   isolation: isolate;
   transition:
-    transform 0.35s cubic-bezier(0.21, 0.47, 0.32, 0.98),
-    box-shadow 0.35s ease,
-    border-color 0.35s ease;
+    transform var(--duration-hover) var(--ease-standard),
+    box-shadow var(--duration-hover) ease,
+    border-color var(--duration-hover) ease;
 }
 
 .tr-tile::after {
@@ -171,7 +189,7 @@ body {
   background: var(--primary);
   transform: scaleX(0);
   transform-origin: center;
-  transition: transform 0.28s cubic-bezier(0.21, 0.47, 0.32, 0.98);
+  transition: transform var(--duration-hover) var(--ease-standard);
 }
 
 .tr-navlink:hover::after,

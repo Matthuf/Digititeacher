@@ -821,7 +821,7 @@ export function TourPlayer({
 
       {/* Übersicht: alle Stationen kompakt, jederzeit erreichbar */}
       {showOverview && (
-      <div className="fixed inset-0 z-50 flex flex-col justify-end">
+      <div className="fixed inset-0 z-(--z-overlay) flex flex-col justify-end">
         <button
           type="button"
           aria-label={t("player.back")}
