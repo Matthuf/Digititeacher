@@ -161,6 +161,22 @@ export default async function EditTourPage({
   const updateTourWithId = updateTour.bind(null, tour.id);
   const addStationWithId = addStation.bind(null, tour.id);
 
+  // Schwerpunkt der vorhandenen Stationen als Kartenzentrum für neue Stationen.
+  const withCoords = stations.filter(
+    (s) => typeof s.latitude === "number" && typeof s.longitude === "number",
+  );
+  const stationsCentroid =
+    withCoords.length > 0
+      ? {
+          lat:
+            withCoords.reduce((sum, s) => sum + s.latitude, 0) /
+            withCoords.length,
+          lng:
+            withCoords.reduce((sum, s) => sum + s.longitude, 0) /
+            withCoords.length,
+        }
+      : null;
+
   return (
     <div className="mx-auto max-w-2xl px-6 py-12">
       <Card>
@@ -399,7 +415,11 @@ export default async function EditTourPage({
         </CardHeader>
         <CardContent>
           <form action={addStationWithId} className="flex flex-col gap-4">
-            <StationFields idPrefix="new-station" tourId={tour.id} />
+            <StationFields
+              idPrefix="new-station"
+              tourId={tour.id}
+              mapCenter={stationsCentroid}
+            />
             <Button type="submit" className="mt-2">
               Station hinzufügen
             </Button>

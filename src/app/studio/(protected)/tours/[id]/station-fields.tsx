@@ -1,6 +1,7 @@
 import { Sparkles } from "lucide-react";
 import { generateStationAudio } from "@/app/studio/ai-actions";
 import { AudioUpload } from "@/components/audio-upload";
+import { StationCoordinatePicker } from "@/components/station-coordinate-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,11 +14,14 @@ export function StationFields({
   tourId,
   station,
   ai,
+  mapCenter,
 }: {
   idPrefix: string;
   tourId: string;
   station?: Station;
   ai?: AiStatus;
+  /** Fallback-Kartenzentrum für neue Stationen (Schwerpunkt der übrigen). */
+  mapCenter?: { lat: number; lng: number } | null;
 }) {
   return (
     <>
@@ -38,30 +42,12 @@ export function StationFields({
           defaultValue={station?.description ?? ""}
         />
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`${idPrefix}-latitude`}>Breitengrad</Label>
-          <Input
-            id={`${idPrefix}-latitude`}
-            name="latitude"
-            type="number"
-            step="any"
-            defaultValue={station?.latitude ?? ""}
-            required
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`${idPrefix}-longitude`}>Längengrad</Label>
-          <Input
-            id={`${idPrefix}-longitude`}
-            name="longitude"
-            type="number"
-            step="any"
-            defaultValue={station?.longitude ?? ""}
-            required
-          />
-        </div>
-      </div>
+      <StationCoordinatePicker
+        idPrefix={idPrefix}
+        defaultLat={station?.latitude ?? null}
+        defaultLng={station?.longitude ?? null}
+        center={mapCenter}
+      />
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-radius`}>
           GPS-Auslöseradius (Meter, leer = 40)
