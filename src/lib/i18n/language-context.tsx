@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   DEFAULT_UI_LOCALE,
   dictionaries,
@@ -25,6 +32,12 @@ export function LanguageProvider({
   children: React.ReactNode;
 }) {
   const [lang, setLangState] = useState<UiLocale>(initialLang ?? DEFAULT_UI_LOCALE);
+
+  // <html lang> an den UI-Sprachschalter koppeln (WCAG 3.1.1). Läuft nur
+  // clientseitig; das SSR-Attribut in layout.tsx bleibt der Startwert.
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   const setLang = useCallback((next: UiLocale) => {
     setLangState(next);
