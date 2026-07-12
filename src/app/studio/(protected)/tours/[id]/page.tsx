@@ -23,6 +23,8 @@ import { aiStatus } from "@/lib/ai/status";
 import { stripeConfigured } from "@/lib/payments/stripe";
 import { MediaUpload } from "@/components/media-upload";
 import { CoverUpload } from "@/components/cover-upload";
+import { AudioUpload } from "@/components/audio-upload";
+import { Textarea } from "@/components/ui/textarea";
 import { StationFields } from "./station-fields";
 import { StationQuizEditor } from "./station-quiz-editor";
 import { TranslationsEditor } from "./translations-editor";
@@ -277,6 +279,136 @@ export default async function EditTourPage({
               />
               Als Highlight auf der Startseite zeigen
             </label>
+
+            <div className="mt-2 border-t pt-4">
+              <p className="text-sm font-medium">Wegdaten (optional)</p>
+              <div className="mt-3 grid grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="distance_km">Distanz (km)</Label>
+                  <Input
+                    id="distance_km"
+                    name="distance_km"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    defaultValue={tour.distance_km ?? ""}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="elevation_gain_m">Aufstieg (m)</Label>
+                  <Input
+                    id="elevation_gain_m"
+                    name="elevation_gain_m"
+                    type="number"
+                    min="0"
+                    defaultValue={tour.elevation_gain_m ?? ""}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="elevation_loss_m">Abstieg (m)</Label>
+                  <Input
+                    id="elevation_loss_m"
+                    name="elevation_loss_m"
+                    type="number"
+                    min="0"
+                    defaultValue={tour.elevation_loss_m ?? ""}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="target_groups">Zielgruppen</Label>
+              <Input
+                id="target_groups"
+                name="target_groups"
+                defaultValue={tour.target_groups?.join(", ") ?? ""}
+              />
+              <p className="text-xs text-muted-foreground">
+                Kommagetrennt, z. B. Familien, Wanderer
+              </p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="suitability_tags">Diese Tour passt zu dir, wenn …</Label>
+              <Input
+                id="suitability_tags"
+                name="suitability_tags"
+                defaultValue={tour.suitability_tags?.join(", ") ?? ""}
+              />
+              <p className="text-xs text-muted-foreground">
+                Kommagetrennt, z. B. du gerne draussen bist, du Geschichten magst
+              </p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="equipment">Empfohlene Ausrüstung</Label>
+              <Input
+                id="equipment"
+                name="equipment"
+                defaultValue={tour.equipment?.join(", ") ?? ""}
+              />
+              <p className="text-xs text-muted-foreground">
+                Kommagetrennt, z. B. Wanderschuhe, Wasser, Kopfhörer
+              </p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="arrival_info">Anreise und Parkplatz</Label>
+              <Textarea
+                id="arrival_info"
+                name="arrival_info"
+                defaultValue={tour.arrival_info ?? ""}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="accessibility_info">Zugänglichkeit</Label>
+              <Textarea
+                id="accessibility_info"
+                name="accessibility_info"
+                defaultValue={tour.accessibility_info ?? ""}
+              />
+            </div>
+
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium">Hörprobe (optional)</p>
+              <div className="mt-3">
+                <AudioUpload
+                  tourId={tour.id}
+                  idPrefix="tour-preview"
+                  defaultUrl={tour.audio_preview_url}
+                  defaultDuration={tour.audio_preview_duration_seconds}
+                  urlFieldName="audio_preview_url"
+                  durationFieldName="audio_preview_duration_seconds"
+                  label="Kurze Audio-Vorschau"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg border p-4">
+              <p className="text-sm font-medium">FAQ</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Bis zu 8 Fragen und Antworten. Leere Fragen werden ignoriert.
+              </p>
+              <div className="mt-3 flex flex-col gap-4">
+                {Array.from({ length: 8 }, (_, i) => {
+                  const entry = tour.faq?.[i];
+                  return (
+                    <div key={i} className="flex flex-col gap-1.5">
+                      <Input
+                        name={`faq-q-${i}`}
+                        defaultValue={entry?.question ?? ""}
+                        placeholder={`Frage ${i + 1}`}
+                      />
+                      <Textarea
+                        name={`faq-a-${i}`}
+                        defaultValue={entry?.answer ?? ""}
+                        placeholder="Antwort"
+                        className="min-h-16"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {error && <p className="text-sm text-destructive">{error}</p>}
             {saved && <p className="text-sm text-muted-foreground">Gespeichert.</p>}
             <Button type="submit" className="mt-2">

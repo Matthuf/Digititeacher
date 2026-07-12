@@ -11,6 +11,37 @@ function genreFromForm(formData: FormData) {
   return isGenre(value) ? value : null;
 }
 
+/** Kommagetrenntes Textfeld → getrimmtes String-Array, null wenn leer. */
+function stringArrayFromForm(formData: FormData, key: string): string[] | null {
+  const parts = String(formData.get(key) ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return parts.length > 0 ? parts : null;
+}
+
+/** Ganzzahliges Zahlenfeld → Zahl oder null. */
+function intFromForm(formData: FormData, key: string): number | null {
+  const raw = formData.get(key);
+  return raw ? Math.round(Number(raw)) : null;
+}
+
+/** Bis zu 8 indexierte FAQ-Paare (faq-q-N / faq-a-N) → {question, answer}[], null wenn leer. */
+function faqFromForm(
+  formData: FormData,
+): { question: string; answer: string }[] | null {
+  const pairs: { question: string; answer: string }[] = [];
+  for (let i = 0; i < 8; i++) {
+    const question = String(formData.get(`faq-q-${i}`) ?? "").trim();
+    if (!question) continue;
+    pairs.push({
+      question,
+      answer: String(formData.get(`faq-a-${i}`) ?? "").trim(),
+    });
+  }
+  return pairs.length > 0 ? pairs : null;
+}
+
 export async function signIn(formData: FormData) {
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
@@ -85,6 +116,24 @@ export async function updateTour(tourId: string, formData: FormData) {
       price: formData.get("price") ? Number(formData.get("price")) : null,
       is_featured: formData.get("is_featured") === "on",
       status: formData.get("status") === "published" ? "published" : "draft",
+      distance_km: formData.get("distance_km")
+        ? Number(formData.get("distance_km"))
+        : null,
+      elevation_gain_m: intFromForm(formData, "elevation_gain_m"),
+      elevation_loss_m: intFromForm(formData, "elevation_loss_m"),
+      target_groups: stringArrayFromForm(formData, "target_groups"),
+      equipment: stringArrayFromForm(formData, "equipment"),
+      suitability_tags: stringArrayFromForm(formData, "suitability_tags"),
+      arrival_info: String(formData.get("arrival_info") ?? "") || null,
+      accessibility_info:
+        String(formData.get("accessibility_info") ?? "") || null,
+      audio_preview_url:
+        String(formData.get("audio_preview_url") ?? "") || null,
+      audio_preview_duration_seconds: intFromForm(
+        formData,
+        "audio_preview_duration_seconds",
+      ),
+      faq: faqFromForm(formData),
       updated_at: new Date().toISOString(),
     })
     .eq("id", tourId);

@@ -15,6 +15,19 @@ export type Tour = {
   is_featured: boolean;
   created_at: string;
   updated_at: string;
+  // Erweiterte Detailfelder (Migration 009) – redaktionell im Studio gepflegt,
+  // nur Basissprache, noch nicht Teil des Übersetzungssystems.
+  distance_km?: number | null;
+  elevation_gain_m?: number | null;
+  elevation_loss_m?: number | null;
+  target_groups?: string[] | null;
+  equipment?: string[] | null;
+  suitability_tags?: string[] | null;
+  arrival_info?: string | null;
+  accessibility_info?: string | null;
+  audio_preview_url?: string | null;
+  audio_preview_duration_seconds?: number | null;
+  faq?: { question: string; answer: string }[] | null;
 };
 
 export type Station = {

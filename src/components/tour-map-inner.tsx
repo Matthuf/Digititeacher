@@ -36,6 +36,7 @@ export function TourMap({
   userPosition,
   routeTarget,
   routeCoords,
+  previewRoute,
 }: {
   stations: StationPin[];
   className?: string;
@@ -45,6 +46,9 @@ export function TourMap({
   routeTarget?: { latitude: number; longitude: number } | null;
   /** Echte Fussweg-Route (OpenRouteService) als [lat, lng]-Punkte; hat Vorrang vor routeTarget. */
   routeCoords?: [number, number][] | null;
+  /** Vorschau vor Tourstart: verbindet alle Stationen in Reihenfolge mit einer
+   *  gestrichelten Linie (ohne Standort/Live-Routing). */
+  previewRoute?: boolean;
 }) {
   if (stations.length === 0) {
     return null;
@@ -54,6 +58,11 @@ export function TourMap({
     stations[0].latitude,
     stations[0].longitude,
   ];
+
+  const previewPositions: [number, number][] | null =
+    previewRoute && stations.length > 1
+      ? stations.map((s) => [s.latitude, s.longitude])
+      : null;
 
   const routePositions: [number, number][] | null =
     routeCoords && routeCoords.length > 1
@@ -73,6 +82,19 @@ export function TourMap({
       className={className ?? "h-96 w-full"}
     >
       <TileLayer attribution={TILE_LAYER.attribution} url={TILE_LAYER.url} />
+      {previewPositions && (
+        <Polyline
+          positions={previewPositions}
+          pathOptions={{
+            color: "#b6672a",
+            weight: 3,
+            opacity: 0.8,
+            dashArray: "6 10",
+            lineCap: "round",
+            lineJoin: "round",
+          }}
+        />
+      )}
       {stations.map((station, index) => (
         <Marker
           key={`${station.id}-${station.id === activeStationId ? "active" : "idle"}`}

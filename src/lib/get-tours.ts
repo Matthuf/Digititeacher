@@ -74,3 +74,26 @@ export async function getFeaturedToursWithPins(
   if (fallbackError) throw fallbackError;
   return withPins(fallback ?? []);
 }
+
+/**
+ * Ähnliche Touren: veröffentlichte Touren mit demselben Genre, ohne die
+ * aktuelle Tour. Für die "Ähnliche Touren"-Sektion der Tourdetailseite.
+ */
+export async function getSimilarTours(
+  genre: string,
+  excludeTourId: string,
+  limit = 3,
+): Promise<Tour[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tours")
+    .select("*")
+    .eq("status", "published")
+    .eq("genre", genre)
+    .neq("id", excludeTourId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data ?? [];
+}
