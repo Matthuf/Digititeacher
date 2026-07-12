@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Compass } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/is-configured";
 import { getPublishedToursWithPins, type TourWithPin } from "@/lib/get-tours";
@@ -83,7 +84,9 @@ export default async function ToursPage() {
       )}
 
       {isSupabaseConfigured && !loadError && tours.length > 0 && (
-        <CatalogBrowser tours={tours} />
+        <Suspense fallback={null}>
+          <CatalogBrowser tours={tours} />
+        </Suspense>
       )}
     </div>
   );

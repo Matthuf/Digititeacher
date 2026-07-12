@@ -12,7 +12,10 @@ export function TourCard({ tour }: { tour: Tour }) {
   const genre = isGenre(tour.genre) ? GENRES[tour.genre] : null;
 
   return (
-    <Link href={`/touren/${tour.slug}`} className="group block h-full">
+    <Link
+      href={`/touren/${tour.slug}`}
+      className="group block h-full rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+    >
       <article className="tr-tile flex h-full flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
         <div className="relative aspect-[3/2] overflow-hidden">
           {tour.cover_image_url ? (
@@ -21,7 +24,7 @@ export function TourCard({ tour }: { tour: Tour }) {
               src={tour.cover_image_url}
               alt={`Cover von ${tour.title}`}
               loading="lazy"
-              className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+              className="absolute inset-0 size-full object-cover transition-transform duration-500 pointer-fine:group-hover:scale-[1.04]"
             />
           ) : (
             <div className="absolute inset-0 flex items-end bg-secondary">

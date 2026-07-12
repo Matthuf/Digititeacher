@@ -157,19 +157,23 @@ body {
     background-position 0.7s ease;
 }
 
-.group:hover .tr-tile,
-.tr-tile:hover {
-  transform: translateY(-6px);
-  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
-  box-shadow:
-    0 18px 40px -18px color-mix(in srgb, var(--primary) 45%, transparent),
-    0 8px 20px -12px rgb(0 0 0 / 0.25);
-}
+/* Nur auf Geräten mit echtem Zeigegerät (Anforderungsdokument §5.2) – sonst
+   bleibt der Hover-Zustand auf Touch-Geräten nach dem Tippen "kleben". */
+@media (pointer: fine) {
+  .group:hover .tr-tile,
+  .tr-tile:hover {
+    transform: translateY(-6px);
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+    box-shadow:
+      0 18px 40px -18px color-mix(in srgb, var(--primary) 45%, transparent),
+      0 8px 20px -12px rgb(0 0 0 / 0.25);
+  }
 
-.group:hover .tr-tile::after,
-.tr-tile:hover::after {
-  opacity: 1;
-  background-position: -50% 0;
+  .group:hover .tr-tile::after,
+  .tr-tile:hover::after {
+    opacity: 1;
+    background-position: -50% 0;
+  }
 }
 
 /* Nav-Link: Unterstrich wächst mittig nach aussen. */
