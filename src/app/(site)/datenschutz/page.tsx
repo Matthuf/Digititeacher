@@ -51,7 +51,10 @@ export default function DatenschutzPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-foreground">
+          <h2
+            id="gps-standort"
+            className="scroll-mt-24 text-lg font-semibold text-foreground"
+          >
             GPS-Standort
           </h2>
           <p className="mt-2">

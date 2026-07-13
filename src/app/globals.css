@@ -250,6 +250,27 @@ body {
   }
 }
 
+/* Bottom Sheet: dezenter Slide-in von unten (Motion-Token --duration-sheet).
+   Unter prefers-reduced-motion erscheint das Panel ohne Transform sofort. */
+.sl-sheet {
+  animation: sl-sheet-in var(--duration-sheet) var(--ease-standard);
+}
+
+@keyframes sl-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sl-sheet {
+    animation: none;
+  }
+}
+
 /* Numbered Leaflet station pins (rendered via L.divIcon) */
 .dt-pin-wrap {
   background: none;

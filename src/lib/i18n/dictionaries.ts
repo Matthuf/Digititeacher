@@ -104,6 +104,26 @@ export const dictionaries: Record<UiLocale, Dict> = {
     "player.intro.text":
       "Wir brauchen deinen Standort, um die Geschichten automatisch zu starten, sobald du an einer Station ankommst.",
     "player.intro.start": "Tour starten",
+    "player.gps.sheetTitle": "Standortzugriff",
+    "player.gps.explain":
+      "Damit Geschichten am richtigen Ort starten können, benötigt SendaLore deinen Standort. Deine Position wird nicht dauerhaft gespeichert.",
+    "player.gps.activate": "Standort aktivieren",
+    "player.gps.viewFirst": "Tour zuerst ansehen",
+    "player.gps.privacyLink": "Wie werden meine Daten verwendet?",
+    "player.gps.requesting":
+      "Standort wird gesucht … Bleib kurz stehen, damit dein Standort genauer bestimmt werden kann.",
+    "player.gps.inaccurate":
+      "Das GPS-Signal ist momentan ungenau. Bewege dich ins Freie oder warte einen Moment.",
+    "player.gps.denied":
+      "Standortzugriff ist deaktiviert. Aktiviere den Standort in den Browser-Einstellungen, damit Geschichten automatisch starten können.",
+    "player.gps.retry": "Erneut versuchen",
+    "player.gps.unsupported":
+      "Geolocation wird von diesem Browser nicht unterstützt.",
+    "player.gps.offline":
+      "Keine Internetverbindung. Bereits geladene Inhalte bleiben verfügbar.",
+    "player.gps.outsideRoute": "Du befindest dich ausserhalb der Tourroute.",
+    "player.gps.outsideRouteHint": "Folge der Karte zurück zur nächsten Station.",
+    "player.gps.dismiss": "Ausblenden",
     "player.finished.title": "Geschafft!",
     "player.finished.text": "Du hast alle Stationen dieser Tour gehört.",
     "player.noAudio": "Kein Audio hinterlegt.",
@@ -222,6 +242,26 @@ export const dictionaries: Record<UiLocale, Dict> = {
     "player.intro.text":
       "We need your location to start the stories automatically as soon as you reach a station.",
     "player.intro.start": "Start tour",
+    "player.gps.sheetTitle": "Location access",
+    "player.gps.explain":
+      "So stories can start in the right place, SendaLore needs your location. Your position is not stored permanently.",
+    "player.gps.activate": "Enable location",
+    "player.gps.viewFirst": "View the tour first",
+    "player.gps.privacyLink": "How is my data used?",
+    "player.gps.requesting":
+      "Finding your location … Stay still for a moment so it can be pinpointed more accurately.",
+    "player.gps.inaccurate":
+      "The GPS signal is currently inaccurate. Move into the open or wait a moment.",
+    "player.gps.denied":
+      "Location access is turned off. Enable location in your browser settings so stories can start automatically.",
+    "player.gps.retry": "Try again",
+    "player.gps.unsupported":
+      "Geolocation is not supported by this browser.",
+    "player.gps.offline":
+      "No internet connection. Already loaded content stays available.",
+    "player.gps.outsideRoute": "You're outside the tour route.",
+    "player.gps.outsideRouteHint": "Follow the map back to the nearest station.",
+    "player.gps.dismiss": "Dismiss",
     "player.finished.title": "All done!",
     "player.finished.text": "You've heard every station on this tour.",
     "player.noAudio": "No audio available.",

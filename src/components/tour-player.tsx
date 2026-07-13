@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   ArrowLeft,
   Check,
@@ -9,17 +10,21 @@ import {
   Footprints,
   HelpCircle,
   MapPin,
+  Navigation,
   Pause,
   Play,
   RotateCcw,
   RotateCw,
   Trophy,
+  WifiOff,
   X,
 } from "lucide-react";
 import { TourMap } from "@/components/tour-map";
 import { MediaCarousel } from "@/components/media-carousel";
 import { Button } from "@/components/ui/button";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { distanceMeters } from "@/lib/geo";
+import { useGeolocationStatus } from "@/hooks/use-geolocation-status";
 import type { Station, StationMedia, StationQuiz } from "@/lib/tours";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/language-context";
@@ -145,10 +150,10 @@ export function TourPlayer({
 }) {
   const { t } = useLanguage();
   const [hasStarted, setHasStarted] = useState(false);
-  const [position, setPosition] = useState<GeolocationCoordinates | null>(
-    null,
-  );
-  const [geoError, setGeoError] = useState<string | null>(null);
+  const [showLocationSheet, setShowLocationSheet] = useState(false);
+  const [outsideRouteDismissed, setOutsideRouteDismissed] = useState(false);
+  const { status: gpsStatus, position, retry: retryLocation } =
+    useGeolocationStatus({ enabled: hasStarted, stations });
   const [activeStationId, setActiveStationId] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState<{
@@ -277,29 +282,27 @@ export function TourPlayer({
     [activeStationId],
   );
 
-  function startTour() {
-    if (!("geolocation" in navigator)) {
-      setGeoError("Geolocation wird von diesem Browser nicht unterstützt.");
-      return;
-    }
-    setGeoError(null);
+  // Standortdialog: „Tour starten“ öffnet das Sheet (idle), erst „Standort
+  // aktivieren“ startet die eigentliche GPS-Suche.
+  const openLocationSheet = useCallback(() => setShowLocationSheet(true), []);
+  const activateLocation = useCallback(() => setHasStarted(true), []);
+  // „Tour zuerst ansehen“ / Escape / Backdrop: GPS-Suche stoppen, Sheet zu.
+  const dismissLocationSheet = useCallback(() => {
+    setShowLocationSheet(false);
+    setHasStarted(false);
+  }, []);
+  const retrySheetLocation = useCallback(() => {
     setHasStarted(true);
-  }
+    retryLocation();
+  }, [retryLocation]);
 
+  // Sobald eine Position vorliegt (granted/inaccurate/outside-route), schliesst
+  // sich das Sheet und der Laufmodus wird sichtbar.
   useEffect(() => {
-    if (!hasStarted) return;
-
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        setGeoError(null);
-        setPosition(pos.coords);
-      },
-      (err) => setGeoError(err.message),
-      { enableHighAccuracy: true },
-    );
-
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, [hasStarted]);
+    if (!showLocationSheet || !hasStarted || !position) return;
+    const timer = setTimeout(() => setShowLocationSheet(false), 0);
+    return () => clearTimeout(timer);
+  }, [showLocationSheet, hasStarted, position]);
 
   useEffect(() => {
     if (!hasStarted || !position || activeStationId) return;
@@ -398,13 +401,6 @@ export function TourPlayer({
   const activeStationImage = activeStation
     ? (media[activeStation.id] ?? []).find((m) => m.media_type === "image")
     : undefined;
-
-  // Schwaches GPS-Signal (Genauigkeit schlechter als ~50 m) sichtbar machen,
-  // damit klar ist, warum der Auto-Start ggf. ausbleibt.
-  const weakGps =
-    position != null &&
-    typeof position.accuracy === "number" &&
-    position.accuracy > 50;
 
   // Audio der nächsten Station vorab laden: wärmt den Browser-Cache, damit
   // beim Stationswechsel nicht bei Null geladen wird. Nicht abspielen, nicht
@@ -702,16 +698,11 @@ export function TourPlayer({
           <Button
             type="button"
             size="lg"
-            onClick={startTour}
+            onClick={openLocationSheet}
             className="mt-5 rounded-full px-8"
           >
             {t("player.intro.start")}
           </Button>
-          {geoError && (
-            <p className="mt-3 text-sm text-destructive" role="alert">
-              {geoError}
-            </p>
-          )}
         </div>
       )}
 
@@ -756,14 +747,48 @@ export function TourPlayer({
               </Button>
             )}
           </div>
-          {geoError && (
-            <p className="text-sm text-destructive" role="alert">
-              {geoError}
-            </p>
+          {/* Offline hat Vorrang vor outside-route/inaccurate, damit sich die
+              Statusmeldungen nie stapeln (einziger Enum-Wert je Moment). */}
+          {gpsStatus === "offline" && (
+            <div
+              role="status"
+              className="flex items-start gap-2.5 rounded-xl border bg-muted/50 px-4 py-3 text-sm text-foreground"
+            >
+              <WifiOff
+                aria-hidden="true"
+                className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+              />
+              <span>{t("player.gps.offline")}</span>
+            </div>
           )}
-          {weakGps && !geoError && (
+          {gpsStatus === "outside-route" && !outsideRouteDismissed && (
+            <div
+              role="status"
+              className="flex items-start gap-2.5 rounded-xl border border-primary/25 bg-primary/[0.04] px-4 py-3 text-sm"
+            >
+              <Navigation
+                aria-hidden="true"
+                className="mt-0.5 size-4 shrink-0 text-primary"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">{t("player.gps.outsideRoute")}</p>
+                <p className="mt-0.5 text-muted-foreground">
+                  {t("player.gps.outsideRouteHint")}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOutsideRouteDismissed(true)}
+                aria-label={t("player.gps.dismiss")}
+                className="-mr-1 flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              >
+                <X aria-hidden="true" className="size-4" />
+              </button>
+            </div>
+          )}
+          {gpsStatus === "inaccurate" && (
             <p className="text-sm text-muted-foreground" role="status">
-              {t("player.weakGps")}
+              {t("player.gps.inaccurate")}
             </p>
           )}
           <div className="h-72 overflow-hidden rounded-2xl border sm:h-96">
@@ -820,29 +845,11 @@ export function TourPlayer({
       )}
 
       {/* Übersicht: alle Stationen kompakt, jederzeit erreichbar */}
-      {showOverview && (
-      <div className="fixed inset-0 z-(--z-overlay) flex flex-col justify-end">
-        <button
-          type="button"
-          aria-label={t("player.back")}
-          onClick={() => setShowOverview(false)}
-          className="absolute inset-0 bg-foreground/40 backdrop-blur-[1px]"
-        />
-        <div className="relative flex max-h-[85vh] flex-col rounded-t-2xl border bg-background p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="font-serif text-xl font-semibold tracking-tight">
-              {t("player.overview")}
-            </h2>
-            <button
-              type="button"
-              onClick={() => setShowOverview(false)}
-              aria-label={t("player.back")}
-              className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              <X aria-hidden="true" className="size-4" />
-            </button>
-          </div>
-
+      <BottomSheet
+        open={showOverview}
+        onClose={() => setShowOverview(false)}
+        title={t("player.overview")}
+      >
           <div className="mt-4 h-64 shrink-0 overflow-hidden rounded-2xl border">
             <TourMap
               stations={stations.map((s) => ({
@@ -919,9 +926,104 @@ export function TourPlayer({
               );
             })}
           </ol>
+      </BottomSheet>
+
+      {/* Standortdialog: erklärt den GPS-Zugriff und surft die GPS-Zustände
+          idle/requesting/denied/unsupported (Anforderung P1.4). */}
+      <BottomSheet
+        open={showLocationSheet}
+        onClose={dismissLocationSheet}
+        title={t("player.gps.sheetTitle")}
+        closeLabel={t("player.gps.viewFirst")}
+      >
+        <div className="mt-4 flex flex-col gap-4">
+          {gpsStatus === "unsupported" ? (
+            <>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {t("player.gps.unsupported")}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={dismissLocationSheet}
+                className="w-full rounded-full"
+              >
+                {t("player.gps.viewFirst")}
+              </Button>
+            </>
+          ) : gpsStatus === "denied" ? (
+            <>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {t("player.gps.denied")}
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button
+                  type="button"
+                  onClick={retrySheetLocation}
+                  className="w-full rounded-full"
+                >
+                  {t("player.gps.retry")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={dismissLocationSheet}
+                  className="w-full rounded-full"
+                >
+                  {t("player.gps.viewFirst")}
+                </Button>
+              </div>
+            </>
+          ) : gpsStatus === "requesting" ? (
+            <>
+              <p className="flex items-start gap-2.5 text-sm leading-relaxed text-muted-foreground">
+                <Navigation
+                  aria-hidden="true"
+                  className="mt-0.5 size-4 shrink-0 animate-pulse text-primary"
+                />
+                <span>{t("player.gps.requesting")}</span>
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={dismissLocationSheet}
+                className="w-full rounded-full"
+              >
+                {t("player.gps.viewFirst")}
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {t("player.gps.explain")}
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button
+                  type="button"
+                  onClick={activateLocation}
+                  className="w-full rounded-full"
+                >
+                  {t("player.gps.activate")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={dismissLocationSheet}
+                  className="w-full rounded-full"
+                >
+                  {t("player.gps.viewFirst")}
+                </Button>
+              </div>
+              <Link
+                href="/datenschutz#gps-standort"
+                className="text-center text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              >
+                {t("player.gps.privacyLink")}
+              </Link>
+            </>
+          )}
         </div>
-      </div>
-      )}
+      </BottomSheet>
     </div>
   );
 }
